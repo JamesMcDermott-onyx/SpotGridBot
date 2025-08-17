@@ -39,7 +39,7 @@ int main(int argc, char** argv)
 
         Options options(argc, argv);
         auto m_connectionManager = make_shared<ConnectionManager>(options.ConfigPath(), options.LoggingPropsPath(), m_orderBook);
-        //m_connectionManager->Connect(); //connect market data and populate orderbook.
+        m_connectionManager->Connect(); //connect market data and populate orderbook.
 
         auto m_orderManager = make_shared<OrderManager>(m_connectionManager);
 
