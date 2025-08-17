@@ -52,12 +52,12 @@ namespace STRATEGY {
         auto maybe = m_orderManager->GetOrder(m_cp, oid);
         if (!maybe) continue; // If no data (order not found), skip
 
-        Order o = *maybe; // Unwrap the optional
+        Order order = *maybe; // Unwrap the optional
 
         //-----------------------------
         // CASE 1: Fully filled orders
         //-----------------------------
-        if (o.status == OrderStatus::FILLED)
+        if (order.status == OrderStatus::FILLED)
         {
             if (m_orderMeta[oid].side == UTILS::Side::BUY)
             {
@@ -65,8 +65,8 @@ namespace STRATEGY {
                 double sellPrice = m_orderMeta[oid].price * (1.0 + m_cfg.m_stepPercent);
 
                 // Check if holding too much 'base currency' before selling
-                double btc = m_orderManager->GetBalance(m_cp.BaseCCY());
-                if (btc > m_cfg.m_maxPosition + 1e-12)
+                double base = m_orderManager->GetBalance(m_cp.BaseCCY());
+                if (base > m_cfg.m_maxPosition + 1e-12)
                 {
                     Logger::warn("Max 'base currency' position exceeded, not placing hedge sell");
                 }
@@ -84,12 +84,12 @@ namespace STRATEGY {
                 // Calculate the next buy price (one step below)
                 double buyPrice = m_orderMeta[oid].price * (1.0 - m_cfg.m_stepPercent);
 
-                // Check if we have enough 'terminating currency' to buy back
-                double usdt = m_orderManager->GetBalance(m_cp.QuoteCCY());
+                // Check if we have enough 'quote currency' to buy back
+                double quote = m_orderManager->GetBalance(m_cp.QuoteCCY());
                 double cost = buyPrice * m_orderMeta[oid].qty;
-                if (usdt + 1e-12 < cost)
+                if (quote + 1e-12 < cost)
                 {
-                    Logger::warn("Insufficient 'terminating currency' to place re-buy");
+                    Logger::warn("Insufficient 'quote currency' to place re-buy");
                 }
                 else
                 {
@@ -105,10 +105,10 @@ namespace STRATEGY {
         //-----------------------------
         // CASE 2: Partially filled orders
         //-----------------------------
-        else if (o.status == OrderStatus::PARTIALLY_FILLED)
+        else if (order.status == OrderStatus::PARTIALLY_FILLED)
         {
             // Get how much is currently filled
-            double filled = o.filled;
+            double filled = order.filled;
             double knownFilled = m_knownFills[oid]; // what we’ve already processed
 
             // Check if there's new fill since last check
@@ -152,7 +152,7 @@ namespace STRATEGY {
         //-----------------------------
         // CASE 3: Failed or canceled orders
         //-----------------------------
-        else if (o.status == OrderStatus::REJECTED || o.status == OrderStatus::CANCELED)
+        else if (order.status == OrderStatus::REJECTED || order.status == OrderStatus::CANCELED)
         {
             toRemove.push_back(oid);
         }
