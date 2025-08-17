@@ -77,7 +77,7 @@ std::string RestBase::SendWebRequest(const std::string &url, Poco::Net::HTTPSCli
 	for (std::string line; std::getline(rs, line);)
 	{
 		//Commented out for now because it produces enormous noise in trace
-		poco_information_f1(logger(), "RECEIVED LINE: '%s'", line);
+		//poco_information_f1(logger(), "RECEIVED LINE: '%s'", line);
 		msg += line;
 	}
 	

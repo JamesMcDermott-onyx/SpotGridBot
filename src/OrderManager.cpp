@@ -58,29 +58,29 @@ namespace CORE {
         return m_orders[orderId];
     }
 
-    double OrderManager::GetBalance(const std::string &asset)
+    double OrderManager::GetBalance(const std::string &currency)
     {
         std::lock_guard<std::mutex> g(m_mutex);
 
-        if (asset=="USDT")
-            return usdt;
+        if (currency=="USDT")
+            return m_base;
 
-        if (asset=="BTC")
-            return btc;
+        if (currency=="BTC")
+            return m_quote;
 
         return 0.0;
     }
 
-    void OrderManager::setBalances(double _usdt, double _btc)
+    void OrderManager::SetBalances(double base, double quote)
     {
         std::lock_guard<std::mutex> g(m_mutex);
-        usdt=_usdt;
-        btc=_btc;
+        m_base=base;
+        m_quote=quote;
     }
 
-    void OrderManager::dumpBalances()
+    void OrderManager::PrintBalances(UTILS::CurrencyPair cp)
     {
         std::lock_guard<std::mutex> g(m_mutex);
-        std::cout << "Balances: USDT=" << usdt << " BTC=" << btc << " price=" << price << std::endl;
+        std::cout << "Balances: USDT=" << m_base << " BTC=" << m_quote << " price=" << m_price << std::endl;
     }
 }

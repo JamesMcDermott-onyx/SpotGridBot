@@ -15,7 +15,7 @@ namespace CORE {
     virtual bool CancelOrder(const UTILS::CurrencyPair cp, const std::string &orderId)=0;
     virtual std::optional<Order> GetOrder(const UTILS::CurrencyPair cp, const std::string &orderId)=0;
     virtual double GetBalance(const std::string &asset)=0;
-    virtual void setBalances(double _usdt, double _btc)=0;
-    virtual void dumpBalances()=0;
+    virtual void SetBalances(double base, double quote)=0;
+    virtual void PrintBalances(const UTILS::CurrencyPair cp)=0;
   };
 }

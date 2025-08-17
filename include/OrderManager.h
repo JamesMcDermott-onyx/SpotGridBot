@@ -21,22 +21,18 @@ namespace CORE {
     bool CancelOrder(const UTILS::CurrencyPair cp, const std::string &orderId);
     std::optional<Order> GetOrder(const UTILS::CurrencyPair cp, const std::string &orderId);
     double GetBalance(const std::string &asset);
-    void setBalances(double _usdt, double _btc);
-    void dumpBalances();
+    void SetBalances(double base, double quote);
+    void PrintBalances(UTILS::CurrencyPair cp);
 
     std::shared_ptr<CORE::ConnectionManager> GetConnectionManager() { return m_connectionManager; }
 
   private:
     std::mutex m_mutex;
-    double price;
-    double fee;
-    double partialMinPct;
-    double partialMaxPct;
-    double slippageMax;
     std::unordered_map<std::string,Order> m_orders;
-    long long nextId = 1;
-    double usdt = 10000.0;
-    double btc = 0.0;
+
+    double m_price;
+    double m_base = 10000.0;
+    double m_quote = 0.0;
 
     std::shared_ptr<CORE::ConnectionManager> m_connectionManager;
   };
