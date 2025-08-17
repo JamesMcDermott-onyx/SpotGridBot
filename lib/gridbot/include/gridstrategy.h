@@ -22,11 +22,11 @@ namespace STRATEGY {
 
     ~GridStrategy() = default;
 
-    void start();
-    void onTicker();
-    void placeInitialGrid();
-    void checkFilledOrders();
-    void dumpStatus();
+    void Start();
+    void OnTicker();
+    void PlaceInitialGrid();
+    void CheckFilledOrders();
+    void DumpStatus();
 
   private:
     std::shared_ptr<CORE::IOrderManager> m_orderManager;

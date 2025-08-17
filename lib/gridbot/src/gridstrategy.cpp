@@ -8,17 +8,17 @@
 
 using namespace std;
 namespace STRATEGY {
-  void GridStrategy::start()
+  void GridStrategy::Start()
   {
-    placeInitialGrid();
+    PlaceInitialGrid();
   }
 
-  void GridStrategy::onTicker()
+  void GridStrategy::OnTicker()
   {
-    checkFilledOrders();
+    CheckFilledOrders();
   }
 
-  void GridStrategy::placeInitialGrid()
+  void GridStrategy::PlaceInitialGrid()
   {
     double base = m_cfg.m_basePrice;
     double step = m_cfg.m_stepPercent;
@@ -41,7 +41,7 @@ namespace STRATEGY {
     Logger::info("Initial grid placed: " + to_string(m_activeOrders.size()) + " orders");
   }
 
-  void GridStrategy::checkFilledOrders()
+  void GridStrategy::CheckFilledOrders()
   {
     vector<string> toRemove; // store orders to remove after iteration
 
@@ -169,7 +169,7 @@ namespace STRATEGY {
     }
   }
 
-  void GridStrategy::dumpStatus()
+  void GridStrategy::DumpStatus()
   {
     Logger::info("Active orders: " + to_string(m_activeOrders.size()));
     for (auto &oid : m_activeOrders)

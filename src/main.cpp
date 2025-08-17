@@ -46,9 +46,9 @@ int main(int argc, char** argv)
         sleep(2); //need to implement wait
 
         STRATEGY::GridStrategy strat(m_orderManager, options.ConfigPath());
-        strat.start();
+        strat.Start();
 
-        //strat.onTicker();
+        //strat.OnTicker();
 
         poco_information(logger, "SpotGridBot has started - press <enter> to exit ..");
         std::cin.get();
