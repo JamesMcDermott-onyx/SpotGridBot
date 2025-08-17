@@ -10,7 +10,7 @@ namespace CORE {
 
         CRYPTO::JSONDocument response(m_connectionManager->OrderConnection()->SendOrder(cp, side, RESTAPI::EOrderType::Limit, UTILS::TimeInForce::GTC, price, quantity));
 
-        if (response.GetValue<std::string>("status").c_str()=="true")
+        if (response.GetValue<std::string>("success").compare("true")==0)
         {
             Order order;
             order.side = side;
