@@ -20,8 +20,8 @@ namespace CORE {
     std::string PlaceLimitOrder(const UTILS::CurrencyPair cp, UTILS::Side side, double price, double quantity);
     bool CancelOrder(const UTILS::CurrencyPair cp, const std::string &orderId);
     std::optional<Order> GetOrder(const UTILS::CurrencyPair cp, const std::string &orderId);
-    double GetBalance(const std::string &asset);
-    void SetBalances(double base, double quote);
+    double GetBalance(const UTILS::Currency &currency);
+    void SetBalance(const UTILS::Currency &currency, double balance);
     void PrintBalances(UTILS::CurrencyPair cp);
 
     std::shared_ptr<CORE::ConnectionManager> GetConnectionManager() { return m_connectionManager; }
@@ -30,9 +30,7 @@ namespace CORE {
     std::mutex m_mutex;
     std::unordered_map<std::string,Order> m_orders;
 
-    double m_price;
-    double m_base = 10000.0;
-    double m_quote = 0.0;
+    std::vector<double> m_balance; //the balance off the base and quote currencies
 
     std::shared_ptr<CORE::ConnectionManager> m_connectionManager;
   };

@@ -58,29 +58,21 @@ namespace CORE {
         return m_orders[orderId];
     }
 
-    double OrderManager::GetBalance(const std::string &currency)
+    double OrderManager::GetBalance(const UTILS::Currency &currency)
     {
         std::lock_guard<std::mutex> g(m_mutex);
-
-        if (currency=="USDT")
-            return m_base;
-
-        if (currency=="BTC")
-            return m_quote;
-
-        return 0.0;
+        return m_balance[currency];
     }
 
-    void OrderManager::SetBalances(double base, double quote)
+    void OrderManager::SetBalance(const UTILS::Currency &currency, double balance)
     {
         std::lock_guard<std::mutex> g(m_mutex);
-        m_base=base;
-        m_quote=quote;
+        m_balance[currency]=balance;
     }
 
     void OrderManager::PrintBalances(UTILS::CurrencyPair cp)
     {
         std::lock_guard<std::mutex> g(m_mutex);
-        std::cout << "Balances: USDT=" << m_base << " BTC=" << m_quote << " price=" << m_price << std::endl;
+        std::cout << "Balances: " << cp.BaseCCY().ToString() << "  " << m_balance[cp.BaseCCY()] << " " << cp.QuoteCCY().ToString() << " " << m_balance[cp.QuoteCCY()] << std::endl;
     }
 }

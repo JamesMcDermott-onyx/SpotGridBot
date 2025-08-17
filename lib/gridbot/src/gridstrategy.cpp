@@ -65,7 +65,7 @@ namespace STRATEGY {
                 double sellPrice = m_orderMeta[oid].price * (1.0 + m_cfg.m_stepPercent);
 
                 // Check if holding too much 'base currency' before selling
-                double btc = m_orderManager->GetBalance(m_cp.BaseCCY().ToString());
+                double btc = m_orderManager->GetBalance(m_cp.BaseCCY());
                 if (btc > m_cfg.m_maxPosition + 1e-12)
                 {
                     Logger::warn("Max 'base currency' position exceeded, not placing hedge sell");
@@ -85,7 +85,7 @@ namespace STRATEGY {
                 double buyPrice = m_orderMeta[oid].price * (1.0 - m_cfg.m_stepPercent);
 
                 // Check if we have enough 'terminating currency' to buy back
-                double usdt = m_orderManager->GetBalance(m_cp.QuoteCCY().ToString());
+                double usdt = m_orderManager->GetBalance(m_cp.QuoteCCY());
                 double cost = buyPrice * m_orderMeta[oid].qty;
                 if (usdt + 1e-12 < cost)
                 {
@@ -123,7 +123,7 @@ namespace STRATEGY {
                 if (m_orderMeta[oid].side == UTILS::Side::BUY)
                 {
                     double sellPrice = m_orderMeta[oid].price * (1.0 + m_cfg.m_stepPercent);
-                    double btc = m_orderManager->GetBalance(m_cp.BaseCCY().ToString());
+                    double btc = m_orderManager->GetBalance(m_cp.BaseCCY());
 
                     // Only place hedge if we’re under the max position
                     if (btc <= m_cfg.m_maxPosition + 1e-12)
@@ -136,7 +136,7 @@ namespace STRATEGY {
                 else // partial SELL fill
                 {
                     double buyPrice = m_orderMeta[oid].price * (1.0 - m_cfg.m_stepPercent);
-                    double usdt = m_orderManager->GetBalance(m_cp.QuoteCCY().ToString());
+                    double usdt = m_orderManager->GetBalance(m_cp.QuoteCCY());
                     double cost = buyPrice * delta;
 
                     if (usdt + 1e-12 >= cost)
