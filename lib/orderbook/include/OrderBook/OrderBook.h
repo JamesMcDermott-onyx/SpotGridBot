@@ -40,7 +40,7 @@ public:
 
 	/** @brief Constructor. */
 	explicit OrderBook()
-			: BookBase("SortBook") { }
+			: BookBase("OrderBook") { }
 	
 	/** @brief Constructor accepting an explicit logger name (used by derived classes like FakeBook). */
 	OrderBook(const std::string &loggerName)
@@ -244,7 +244,7 @@ protected:
 	 *
 	 * @return Type name.
 	 */
-	std::string typeString() const { return "SortBook"; }
+	std::string typeString() const { return "OrderBook"; }
 	
 	std::string propDefaultValue(const std::string &name) const;
 
@@ -263,8 +263,7 @@ private:
 	/** @brief Maps for shared exclusive locks (@a ask and @a bid side. */
 	mutable UTILS::SharedLockable<UTILS::BidAskPair<AccessMap>> m_accessMap;
 	
-	UTILS::SharedLockable<std::map<UTILS::CurrencyPair, UTILS::BidAskPair<std::optional<int64_t>>>>
-			m_lastCleanupMap; //!< timestamps of last call to CleanupQuoteVec()
+	UTILS::SharedLockable<std::map<UTILS::CurrencyPair, UTILS::BidAskPair<std::optional<int64_t>>>> m_lastCleanupMap; //!< timestamps of last call to CleanupQuoteVec()
 	
 	std::shared_mutex &GetLock(UTILS::CurrencyPair cp, bool bid) const;
 	

@@ -15,7 +15,7 @@
 namespace CORE {
 namespace BOOK {
 
-class SortBook;
+class OrderBook;
 
 /*! \brief Abstract base class for all book view classes (e.g. SortView and FilterView) */
 class BookView
@@ -81,12 +81,12 @@ public:
 	 * */
 	virtual void IterateQuoteGroups(const QuoteGroupFunc &action, const QuotePred &quotePred = nullptr) const = 0;
 	
-	/*! \brief Pointer to the underlying SortBook.
+	/*! \brief Pointer to the underlying OrderBook.
 	 *
 	 * Virtual function to be overridden by derived classes.
 	 *
 	 * */
-	virtual const SortBook *BookPtr() const { return nullptr; }
+	virtual const OrderBook *BookPtr() const { return nullptr; }
 	
 	/*! \brief Pointer to the direct source view.
 	 *
