@@ -181,49 +181,37 @@ std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, cons
 	return msg;
  }
 
-
-//------------------------------------------------------------------------------
-std::string ConnectionORD::QueryOrder(const UTILS::CurrencyPair &instrument, const std::string &orderId,
-								   const std::optional<std::string> &origClientOrderId)
-{
-	return QueryOrderOrCancel(ERequestType::QueryOrder, instrument, orderId, origClientOrderId);
-}
-
-
 //------------------------------------------------------------------------------
 std::string ConnectionORD::CancelOrder(const UTILS::CurrencyPair &instrument, const std::string &orderId,
 									const std::optional<std::string> &origClientOrderId)
 {
-	return QueryOrderOrCancel(ERequestType::CancelOrder, instrument, orderId, origClientOrderId);
-}
+	const std::string requestPath("orders/batch_cancel");
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "POST");
+	std::string body("{ \"order_ids\": [ \""+orderId +"\"]}");
 
+	std::string msg = DoWebRequest(m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_POST, [&](std::string &path)
+	{
 
-//------------------------------------------------------------------------------
-/*! \brief implements common parts of two functions */
-std::string ConnectionORD::QueryOrderOrCancel(const ERequestType requestType, const UTILS::CurrencyPair &instrument, const std::string &orderId,
-										   const std::optional<std::string> &origClientOrderId)
-{
-	std::string queryString = "symbol=" + instrument.BaseCCY().ToString() + instrument.QuoteCCY().ToString();
-	if (!orderId.empty())
-	{
-		queryString += "&orderId=" + orderId;
-	}
-	if (origClientOrderId.has_value())
-	{
-		queryString += "&origClientOrderId=" + origClientOrderId.value();
-	}
-	queryString += "&recvWindow=" + std::to_string(m_settings.m_recvWindow);
-	queryString += "&timestamp=" + std::to_string(UTILS::CurrentTimestamp() / 1000000); // timestamp must be in ms
-	const auto signature = CORE::CRYPTO::TOOLS::EncryptWithHMAC(m_settings.m_secretkey, queryString);
-	return DoWebRequest(m_settings.m_orders_http,
-						requestType == ERequestType::QueryOrder ? Poco::Net::HTTPRequest::HTTP_GET : Poco::Net::HTTPRequest::HTTP_DELETE,
-						[&queryString, &signature](std::string &path)
+	},
+	[&](Poco::Net::HTTPRequest &request)
 						{
-							path += "?" + queryString + "&signature=" + signature;
-						}, [this](Poco::Net::HTTPRequest &request)
-						{
-							request.add("X-MBX-APIKEY", m_settings.m_apikey);
-						});
+							request.add("content-type", "application/json");
+							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
+							request.add("CB-ACCESS-PASSPHRASE",  std::get<CB_ACCESS_PASSPHRASE>(header));
+							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
+							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
+						},
+	[&](const Poco::Net::HTTPResponse &response)
+	{
+		m_logger.Session().Information(response.getReason());
+	},
+	[&](std::ostream &ostr) {
+		ostr << body;
+		m_logger.Protocol().Outging(body);
+	});
+
+	m_logger.Protocol().Incoming(msg);
+	return msg;
 }
 
 

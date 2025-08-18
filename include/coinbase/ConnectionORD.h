@@ -30,7 +30,9 @@ public:
 						  const std::string &clientOrderId = "");
 	
 	std::string QueryOrder(const UTILS::CurrencyPair &instrument, const std::string &orderId,
-						   const std::optional<std::string> &origClientOrderId = std::nullopt);
+						   const std::optional<std::string> &origClientOrderId = std::nullopt) {
+
+	}
 	
 	std::string CancelOrder(const UTILS::CurrencyPair &instrument, const std::string &orderId,
 							const std::optional<std::string> &origClientOrderId = std::nullopt);
