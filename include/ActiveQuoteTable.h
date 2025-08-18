@@ -24,7 +24,7 @@ public:
 	/** Alias for unique pointer to a QuoteInfo object */
 	using QuoteInfoPtr = std::unique_ptr<QuoteInfo>;
 	
-	static size_t CalculateHashValue(const UTILS::NormalizedMDData::Entry &entry);
+	static size_t CalculateHashValue(const UTILS::BookUpdate::Entry &entry);
 	
 	bool Empty() const;
 	

@@ -221,10 +221,10 @@ public:
 	UTILS::BidAskPair<Quote::Ptr> GetBestQuotes(UTILS::CurrencyPair cp) const;
 	
 	void AddEntry(int64_t key, int64_t refKey,
-				  int64_t receiveTime, UTILS::CurrencyPair cp, const UTILS::NormalizedMDData::Entry &entry);
+				  int64_t receiveTime, UTILS::CurrencyPair cp, const UTILS::BookUpdate::Entry &entry);
 	
 	void AddEntry(int64_t key, int64_t refKey, int64_t sendTime, int64_t receiveTime, UTILS::CurrencyPair cp,
-				  const UTILS::NormalizedMDData::Entry &entry);
+				  const UTILS::BookUpdate::Entry &entry);
 	
 	size_t GetQuoteCount(UTILS::CurrencyPair cp, bool bid) const;
 	

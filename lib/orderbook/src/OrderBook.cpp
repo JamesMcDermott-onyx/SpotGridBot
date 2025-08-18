@@ -41,7 +41,7 @@ std::string OrderBook::propDefaultValue(const std::string &name) const
 	}
 }
 
-void OrderBook::AddEntry(int64_t key, int64_t refKey, int64_t receiveTime, CurrencyPair cp, const NormalizedMDData::Entry &entry)
+void OrderBook::AddEntry(int64_t key, int64_t refKey, int64_t receiveTime, CurrencyPair cp, const BookUpdate::Entry &entry)
 {
     AddQuote(cp, entry.entryType.Bid(),
 		QuotePool::getQuote(__PRETTY_FUNCTION__,
@@ -65,7 +65,7 @@ void OrderBook::AddEntry(int64_t key, int64_t refKey, int64_t receiveTime, Curre
 }
 
 void OrderBook::AddEntry(int64_t key, int64_t refKey, int64_t sendTime, int64_t receiveTime, CurrencyPair cp,
-						const NormalizedMDData::Entry &entry)
+						const BookUpdate::Entry &entry)
 {
     AddQuote(cp, entry.entryType.Bid(),
 		QuotePool::getQuote(__PRETTY_FUNCTION__, true, std::this_thread::get_id(),

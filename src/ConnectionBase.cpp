@@ -189,7 +189,7 @@ bool ConnectionBase::Send(const std::string &payload)
 
 //------------------------------------------------------------------------------//
 UTILS::BoolResult ConnectionBase::PublishQuote(int64_t key, int64_t refKey, int64_t timestamp,
-															 int64_t receiveTime, UTILS::CurrencyPair cp, const UTILS::NormalizedMDData::Entry &entry)
+															 int64_t receiveTime, UTILS::CurrencyPair cp, const UTILS::BookUpdate::Entry &entry)
 {
 	m_connectionManager.GetOrderBook()->AddEntry(key, refKey, timestamp, receiveTime, cp, entry);
 
@@ -277,10 +277,10 @@ int ConnectionBase::ReceiveWebSocketData(Poco::Net::WebSocket *ws, char *buffer,
 
 
 //------------------------------------------------------------------------------
-UTILS::NormalizedMDData::Ptr ConnectionBase::ParseQuote(CORE::CRYPTO::PriceMessage::Levels &levels, const char side, const std::string &instrument)
+UTILS::BookUpdate::Ptr ConnectionBase::ParseQuote(CORE::CRYPTO::PriceMessage::Levels &levels, const char side, const std::string &instrument)
 {
-	NormalizedMDData::Ptr nmd { std::make_unique<NormalizedMDData>() };
-	NormalizedMDData::Entry *entry;
+	BookUpdate::Ptr nmd { std::make_unique<BookUpdate>() };
+	BookUpdate::Entry *entry;
 	
 	nmd->entries.resize(levels.size());
 	BidAskPair<int64_t> currentLevel { 0, 0 };
@@ -303,7 +303,7 @@ UTILS::NormalizedMDData::Ptr ConnectionBase::ParseQuote(CORE::CRYPTO::PriceMessa
 }
 
 //------------------------------------------------------------------------------
-void ConnectionBase::PublishQuotes(UTILS::NormalizedMDData::Ptr nmd)
+void ConnectionBase::PublishQuotes(UTILS::BookUpdate::Ptr nmd)
 {
 	if (nmd)
 	{
@@ -315,7 +315,7 @@ void ConnectionBase::PublishQuotes(UTILS::NormalizedMDData::Ptr nmd)
 
 		for (size_t i { 0 }; i < cnt; ++i)
 		{
-			NormalizedMDData::Entry &entry { nmd->entries[i] };
+			BookUpdate::Entry &entry { nmd->entries[i] };
 			entry.endOfMessage = (i == cnt - 1);
 			entry.sequenceTag = sequenceTag;
 			CurrencyPair cp = entry.instrument;

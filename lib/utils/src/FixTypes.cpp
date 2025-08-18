@@ -20,8 +20,6 @@ std::map<char, std::string>Side::nameMap = {{ '1',  "BUY" },
 											{ '2',  "SELL" },
 											{ '\0', "INVALID" }, };
 
-ObjectPool<NormalizedMDData, NormalizedMDDataPool::POOL_SIZE> NormalizedMDDataPool::op;
-
 //definitions of static const variables:
 const char QuoteType::BID = '0';
 const char QuoteType::OFFER = '1';

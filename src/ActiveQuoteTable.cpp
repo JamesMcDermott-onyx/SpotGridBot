@@ -8,7 +8,7 @@
 namespace CORE {
 
 //static
-size_t ActiveQuoteTable::CalculateHashValue(const UTILS::NormalizedMDData::Entry &entry)
+size_t ActiveQuoteTable::CalculateHashValue(const UTILS::BookUpdate::Entry &entry)
 {
 	std::hash<double> dblHash;
 	size_t result { dblHash(entry.volume) ^ dblHash(entry.price) ^ dblHash(entry.minQty) };

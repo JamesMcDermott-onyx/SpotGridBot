@@ -54,7 +54,7 @@ public:
 	
 	void Disconnect() override;
 	
-	void PublishQuotes(UTILS::NormalizedMDData::Ptr nmd);
+	void PublishQuotes(UTILS::BookUpdate::Ptr nmd);
 	
 	bool IsConnected() const override
 	{
@@ -92,7 +92,7 @@ public:
 	
 	UTILS::BoolResult UnsubscribeInstrument(const std::string &symbol);
 	
-	UTILS::NormalizedMDData::Ptr ParseQuote(PriceMessage::Levels &levels, const char side, const std::string &instrument);
+	UTILS::BookUpdate::Ptr ParseQuote(PriceMessage::Levels &levels, const char side, const std::string &instrument);
 	
 	virtual std::string TranslateSymbol(const std::string &symbol) const
 	{
@@ -169,7 +169,7 @@ protected:
 	}
 	
 	UTILS::BoolResult PublishQuote(int64_t key, int64_t refKey, int64_t timestamp,
-															 int64_t receiveTime, UTILS::CurrencyPair cp, const UTILS::NormalizedMDData::Entry &entry);
+															 int64_t receiveTime, UTILS::CurrencyPair cp, const UTILS::BookUpdate::Entry &entry);
 	
 	Settings m_settings;
 	Logger m_logger; //Session logger..

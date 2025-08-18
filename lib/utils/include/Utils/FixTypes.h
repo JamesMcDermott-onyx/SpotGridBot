@@ -455,11 +455,11 @@ struct BidAskPair : std::pair<T, T>
 /**
  * Normalized representation of a market data message
  */
-struct NormalizedMDData
+struct BookUpdate
 {
 	static constexpr uint64_t POOL_SIZE = 1L << 20;
 	// using Ptr = std::unique_ptr<NormalizedMDData>; // can't use this because of custom deleter
-	using Ptr = std::shared_ptr<NormalizedMDData>;
+	using Ptr = std::shared_ptr<BookUpdate>;
 
 #ifdef PARSE_ORIGINATORS
 	using Originator = std::pair<std::string, double>;
@@ -492,27 +492,6 @@ struct NormalizedMDData
 	std::string mdReqID { "" }; //!< tag 262
 	std::vector<Entry> entries; //!< vector of entries
 };
-
-
-class NormalizedMDDataPool
-{
-public:
-	static constexpr uint64_t POOL_SIZE = 1L << 20;
-
-	template <typename... Args>
-	static NormalizedMDData::Ptr getNormalizedMDDataObject(const char* caller, std::thread::id tid, Args... args)
-	{
-		if(op.isExhausted())
-		{
-			return std::make_unique<NormalizedMDData>(std::forward<Args>(args)...);
-		}
-		return NormalizedMDData::Ptr(std::move(op.getObject(caller, tid, std::forward<Args>(args)...)));
-	}
-
-private:
-	static UTILS::ObjectPool<NormalizedMDData, POOL_SIZE> op;
-};
-
 
 
 /**
