@@ -24,7 +24,7 @@ namespace STRATEGY {
     ~GridStrategy() = default;
 
     void Start();
-    void OnTicker();
+
     void PlaceInitialGrid();
     void CheckFilledOrders();
     void PrintStatus();

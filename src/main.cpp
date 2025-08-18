@@ -43,8 +43,6 @@ int main(int argc, char** argv)
 
         auto m_orderManager = make_shared<OrderManager>(m_connectionManager);
 
-        sleep(2); //need to implement wait
-
         STRATEGY::GridStrategy strat(m_orderManager, options.ConfigPath());
         strat.Start();
 

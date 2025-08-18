@@ -8,17 +8,13 @@
 
 #include "IOrderManager.h"
 #include "Utils/CurrencyPair.h"
+#include "Utils/Round.h"
 
 using namespace std;
 namespace STRATEGY {
   void GridStrategy::Start()
   {
     PlaceInitialGrid();
-  }
-
-  void GridStrategy::OnTicker()
-  {
-    CheckFilledOrders();
   }
 
   void GridStrategy::PlaceInitialGrid()
@@ -54,7 +50,9 @@ namespace STRATEGY {
     {
         // Query the exchange/order manager for the latest status of this order
         auto maybe = m_orderManager->GetOrder(m_cp, orderId);
-        if (!maybe) continue; // If no data (order not found), skip
+        if (!maybe) {
+            continue; // If no data (order not found), skip
+        }
 
         Order order = *maybe; // Unwrap the optional
 
@@ -70,7 +68,7 @@ namespace STRATEGY {
 
                 // Check if holding too much 'base currency' before selling
                 double base = m_orderManager->GetBalance(m_cp.BaseCCY());
-                if (base > m_cfg.m_maxPosition + 1e-12)
+                if (base > UTILS::Round<double>(m_cfg.m_maxPosition))
                 {
                     poco_warning(logger(), "Max 'base currency' position exceeded, not placing hedge sell");
                 }
@@ -116,7 +114,7 @@ namespace STRATEGY {
             double knownFilled = m_knownFills[orderId]; // what we’ve already processed
 
             // Check if there's new fill since last check
-            if (filled - knownFilled > 1e-12)
+            if ( UTILS::Round<double>(filled - knownFilled) )
             {
                 double delta = filled - knownFilled; // amount newly filled
                 m_knownFills[orderId] = filled;          // update record
@@ -127,10 +125,10 @@ namespace STRATEGY {
                 if (m_orderMeta[orderId].side == UTILS::Side::BUY)
                 {
                     double sellPrice = m_orderMeta[orderId].price * (1.0 + m_cfg.m_stepPercent);
-                    double btc = m_orderManager->GetBalance(m_cp.BaseCCY());
+                    double base = m_orderManager->GetBalance(m_cp.BaseCCY());
 
                     // Only place hedge if we’re under the max position
-                    if (btc <= m_cfg.m_maxPosition + 1e-12)
+                    if (base <= UTILS::Round<double>(m_cfg.m_maxPosition))
                     {
                         string newId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::SELL, sellPrice, delta);
                         m_activeOrders.push_back(newId);
@@ -140,10 +138,10 @@ namespace STRATEGY {
                 else // partial SELL fill
                 {
                     double buyPrice = m_orderMeta[orderId].price * (1.0 - m_cfg.m_stepPercent);
-                    double usdt = m_orderManager->GetBalance(m_cp.QuoteCCY());
+                    double quote = m_orderManager->GetBalance(m_cp.QuoteCCY());
                     double cost = buyPrice * delta;
 
-                    if (usdt + 1e-12 >= cost)
+                    if (UTILS::Round<double>(quote) >= cost)
                     {
                         string newId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::BUY, buyPrice, delta);
                         m_activeOrders.push_back(newId);
