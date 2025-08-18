@@ -23,7 +23,7 @@ namespace CORE {
             order.id = sr.GetValue<std::string>("order_id");
             m_orders[order.id] = order;
 
-            Logger::info("Placed order " + order.id + " " + (side==UTILS::Side::BUY ? "BUY" : "SELL") + " @" + std::to_string(price) + " qty=" + std::to_string(quantity));
+            poco_information_f1(logger(), "Placed order %s" ,  order.id + " " + (side==UTILS::Side::BUY ? "BUY" : "SELL") + " @" + std::to_string(price) + " qty=" + std::to_string(quantity));
 
             return order.id;
         }
@@ -43,7 +43,10 @@ namespace CORE {
             return false;
 
         order.status = OrderStatus::CANCELED;
-        Logger::info("Canceled order " + orderId);
+        m_orders.erase(orderId);
+
+        m_connectionManager->OrderConnection()->CancelOrder(cp, orderId);
+        poco_information_f1(logger(), "Canceled order %s", orderId);
 
         return true;
     }

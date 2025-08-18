@@ -7,13 +7,15 @@
 #include "exchange.h"
 #include "IOrderManager.h"
 #include "Utils/CurrencyPair.h"
+#include "Utils/ErrorHandler.h"
 #include "Utils/FixTypes.h"
+#include "Utils/Logging.h"
 
 namespace CORE {
 
-  class OrderManager : public CORE::IOrderManager {
+  class OrderManager : public CORE::IOrderManager, UTILS::Logging, public UTILS::ErrorHandler {
   public:
-    OrderManager(std::shared_ptr<CORE::ConnectionManager> connectionManager) : m_connectionManager(connectionManager)
+    OrderManager(std::shared_ptr<CORE::ConnectionManager> connectionManager) : Logging("OrderManager"), ErrorHandler(pLogger()), m_connectionManager(connectionManager)
     {
     }
 
