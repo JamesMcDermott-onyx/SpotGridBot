@@ -44,7 +44,7 @@ public:
 	
 	/** @brief Constructor accepting an explicit logger name (used by derived classes like FakeBook). */
 	OrderBook(const std::string &loggerName)
-			: BookBase(loggerName) { }
+			: BookBase(loggerName), m_action(nullptr) { }
 	
 	~OrderBook() = default;
 	
@@ -232,6 +232,11 @@ public:
 	
 	Quote::Ptr GetLastQuote() const;
 
+	void Initialise(std::function<void()> action)
+	{
+		m_action = std::move(action);
+	}
+
 protected:
 	
 	using QuoteVectorMap = std::map<UTILS::CurrencyPair, UTILS::BidAskPair<QuoteVecPtr>>;
@@ -251,7 +256,9 @@ protected:
 private:
 	
 	Quote::Ptr m_lastQuote;
-	
+
+	std::function<void()> m_action;
+
 	void AddQuote(UTILS::CurrencyPair cp, bool bid, Quote::Ptr quote);
 
 	OrderBook::QuoteVec::const_iterator getNextLevel(QuoteGroup::Ptr &quoteGroup, const QuoteVec &srcVec, const BookView::QuotePred &quotePred,

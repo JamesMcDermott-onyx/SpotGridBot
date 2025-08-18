@@ -152,6 +152,17 @@ void OrderBook::AddQuote(CurrencyPair cp, bool bid, Quote::Ptr quote)
 
 	std::atomic_store(&m_lastQuote, quote);
 
+	if (bid) {
+		if (quote->Price() > GetBestPrice(cp, bid)) {
+			m_action();
+		}
+	}
+	else {
+		if (quote->Price() < GetBestPrice(cp, bid)) {
+			m_action();
+		}
+	}
+
 	// static int cnt=1;
 	//
 	// if (cnt++ == 30)
