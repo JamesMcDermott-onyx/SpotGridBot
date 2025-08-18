@@ -29,17 +29,17 @@ namespace STRATEGY {
     for (int i=1;i<=m_cfg.m_levelsBelow;i++)
     {
       double price = base * (1.0 - step * i);
-      string oid = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::BUY, price, m_cfg.m_percentOrderQty);
-      m_activeOrders.push_back(oid);
-      m_orderMeta[oid] = {UTILS::Side::BUY, price, m_cfg.m_percentOrderQty};
+      string orderId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::BUY, price, m_cfg.m_percentOrderQty);
+      m_activeOrders.push_back(orderId);
+      m_orderMeta[orderId] = {UTILS::Side::BUY, price, m_cfg.m_percentOrderQty};
     }
 
     for (int i=1;i<=m_cfg.m_levelsAbove;i++)
     {
       double price = base * (1.0 + step * i);
-      string oid = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::SELL, price, m_cfg.m_percentOrderQty);
-      m_activeOrders.push_back(oid);
-      m_orderMeta[oid] = {UTILS::Side::SELL, price, m_cfg.m_percentOrderQty};
+      string orderId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::SELL, price, m_cfg.m_percentOrderQty);
+      m_activeOrders.push_back(orderId);
+      m_orderMeta[orderId] = {UTILS::Side::SELL, price, m_cfg.m_percentOrderQty};
     }
 
     poco_information_f1(logger(), "Initial grid placed: %s orders", to_string(m_activeOrders.size()));
@@ -50,10 +50,10 @@ namespace STRATEGY {
     vector<string> toRemove; // store orders to remove after iteration
 
     // Loop over all active orders we’re tracking
-    for (auto &oid : m_activeOrders)
+    for (auto &orderId : m_activeOrders)
     {
         // Query the exchange/order manager for the latest status of this order
-        auto maybe = m_orderManager->GetOrder(m_cp, oid);
+        auto maybe = m_orderManager->GetOrder(m_cp, orderId);
         if (!maybe) continue; // If no data (order not found), skip
 
         Order order = *maybe; // Unwrap the optional
@@ -63,10 +63,10 @@ namespace STRATEGY {
         //-----------------------------
         if (order.status == OrderStatus::FILLED)
         {
-            if (m_orderMeta[oid].side == UTILS::Side::BUY)
+            if (m_orderMeta[orderId].side == UTILS::Side::BUY)
             {
                 // Calculate the next sell price (one step above)
-                double sellPrice = m_orderMeta[oid].price * (1.0 + m_cfg.m_stepPercent);
+                double sellPrice = m_orderMeta[orderId].price * (1.0 + m_cfg.m_stepPercent);
 
                 // Check if holding too much 'base currency' before selling
                 double base = m_orderManager->GetBalance(m_cp.BaseCCY());
@@ -77,33 +77,33 @@ namespace STRATEGY {
                 else
                 {
                     // Place sell order for the same quantity
-                    string newId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::SELL, sellPrice, m_orderMeta[oid].qty);
+                    string newId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::SELL, sellPrice, m_orderMeta[orderId].qty);
                     // Track the new order
                     m_activeOrders.push_back(newId);
-                    m_orderMeta[newId] = {UTILS::Side::SELL, sellPrice, m_orderMeta[oid].qty};
+                    m_orderMeta[newId] = {UTILS::Side::SELL, sellPrice, m_orderMeta[orderId].qty};
                 }
             }
             else // It was a SELL order
             {
                 // Calculate the next buy price (one step below)
-                double buyPrice = m_orderMeta[oid].price * (1.0 - m_cfg.m_stepPercent);
+                double buyPrice = m_orderMeta[orderId].price * (1.0 - m_cfg.m_stepPercent);
 
                 // Check if we have enough 'quote currency' to buy back
                 double quote = m_orderManager->GetBalance(m_cp.QuoteCCY());
-                double cost = buyPrice * m_orderMeta[oid].qty;
+                double cost = buyPrice * m_orderMeta[orderId].qty;
                 if (quote + 1e-12 < cost)
                 {
                     poco_warning(logger(), "Insufficient 'quote currency' to place re-buy");
                 }
                 else
                 {
-                    string newId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::BUY, buyPrice, m_orderMeta[oid].qty);
+                    string newId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::BUY, buyPrice, m_orderMeta[orderId].qty);
                     m_activeOrders.push_back(newId);
-                    m_orderMeta[newId] = {UTILS::Side::BUY, buyPrice, m_orderMeta[oid].qty};
+                    m_orderMeta[newId] = {UTILS::Side::BUY, buyPrice, m_orderMeta[orderId].qty};
                 }
             }
             // Mark the filled order for removal
-            toRemove.push_back(oid);
+            toRemove.push_back(orderId);
         }
 
         //-----------------------------
@@ -113,20 +113,20 @@ namespace STRATEGY {
         {
             // Get how much is currently filled
             double filled = order.filled;
-            double knownFilled = m_knownFills[oid]; // what we’ve already processed
+            double knownFilled = m_knownFills[orderId]; // what we’ve already processed
 
             // Check if there's new fill since last check
             if (filled - knownFilled > 1e-12)
             {
                 double delta = filled - knownFilled; // amount newly filled
-                m_knownFills[oid] = filled;          // update record
+                m_knownFills[orderId] = filled;          // update record
 
-                poco_information_f2(logger(), "Detected new partial fill  %s delta=%s", oid, to_string(delta).c_str());
+                poco_information_f2(logger(), "Detected new partial fill  %s delta=%s", orderId, to_string(delta).c_str());
 
                 // Place opposite hedge order for just the filled portion
-                if (m_orderMeta[oid].side == UTILS::Side::BUY)
+                if (m_orderMeta[orderId].side == UTILS::Side::BUY)
                 {
-                    double sellPrice = m_orderMeta[oid].price * (1.0 + m_cfg.m_stepPercent);
+                    double sellPrice = m_orderMeta[orderId].price * (1.0 + m_cfg.m_stepPercent);
                     double btc = m_orderManager->GetBalance(m_cp.BaseCCY());
 
                     // Only place hedge if we’re under the max position
@@ -139,7 +139,7 @@ namespace STRATEGY {
                 }
                 else // partial SELL fill
                 {
-                    double buyPrice = m_orderMeta[oid].price * (1.0 - m_cfg.m_stepPercent);
+                    double buyPrice = m_orderMeta[orderId].price * (1.0 - m_cfg.m_stepPercent);
                     double usdt = m_orderManager->GetBalance(m_cp.QuoteCCY());
                     double cost = buyPrice * delta;
 
@@ -158,7 +158,7 @@ namespace STRATEGY {
         //-----------------------------
         else if (order.status == OrderStatus::REJECTED || order.status == OrderStatus::CANCELED)
         {
-            toRemove.push_back(oid);
+            toRemove.push_back(orderId);
         }
     }
 
@@ -176,10 +176,10 @@ namespace STRATEGY {
   void GridStrategy::PrintStatus()
   {
     Logger::info("Active orders: " + to_string(m_activeOrders.size()));
-    for (auto &oid : m_activeOrders)
+    for (auto &orderId : m_activeOrders)
     {
-          auto m = m_orderMeta[oid];
-          cout << " - " << oid << " " << (m.side==UTILS::Side::BUY ? "BUY" : "SELL") << " @" << m.price << " qty="<<m.qty<<endl;
+          auto m = m_orderMeta[orderId];
+          cout << " - " << orderId << " " << (m.side==UTILS::Side::BUY ? "BUY" : "SELL") << " @" << m.price << " qty="<<m.qty<<endl;
     }
   }
 }

@@ -31,7 +31,7 @@ public:
 	
 	std::string QueryOrder(const UTILS::CurrencyPair &instrument, const std::string &orderId,
 						   const std::optional<std::string> &origClientOrderId = std::nullopt) {
-
+		return "NOT_IMPLEMENTED";
 	}
 	
 	std::string CancelOrder(const UTILS::CurrencyPair &instrument, const std::string &orderId,
