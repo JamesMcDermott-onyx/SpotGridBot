@@ -3,6 +3,9 @@
 
 #include "exchange.h"
 #include "gridstrategy.h"
+
+#include <Poco/Logger.h>
+
 #include "IOrderManager.h"
 #include "Utils/CurrencyPair.h"
 
@@ -38,7 +41,8 @@ namespace STRATEGY {
       m_activeOrders.push_back(oid);
       m_orderMeta[oid] = {UTILS::Side::SELL, price, m_cfg.m_percentOrderQty};
     }
-    Logger::info("Initial grid placed: " + to_string(m_activeOrders.size()) + " orders");
+
+    poco_information_f1(logger(), "Initial grid placed: %s orders", to_string(m_activeOrders.size()));
   }
 
   void GridStrategy::CheckFilledOrders()
@@ -68,7 +72,7 @@ namespace STRATEGY {
                 double base = m_orderManager->GetBalance(m_cp.BaseCCY());
                 if (base > m_cfg.m_maxPosition + 1e-12)
                 {
-                    Logger::warn("Max 'base currency' position exceeded, not placing hedge sell");
+                    poco_warning(logger(), "Max 'base currency' position exceeded, not placing hedge sell");
                 }
                 else
                 {
@@ -89,7 +93,7 @@ namespace STRATEGY {
                 double cost = buyPrice * m_orderMeta[oid].qty;
                 if (quote + 1e-12 < cost)
                 {
-                    Logger::warn("Insufficient 'quote currency' to place re-buy");
+                    poco_warning(logger(), "Insufficient 'quote currency' to place re-buy");
                 }
                 else
                 {
@@ -117,7 +121,7 @@ namespace STRATEGY {
                 double delta = filled - knownFilled; // amount newly filled
                 m_knownFills[oid] = filled;          // update record
 
-                Logger::info("Detected new partial fill " + oid + " delta=" + to_string(delta));
+                poco_information_f2(logger(), "Detected new partial fill  %s delta=%s", oid, to_string(delta).c_str());
 
                 // Place opposite hedge order for just the filled portion
                 if (m_orderMeta[oid].side == UTILS::Side::BUY)
@@ -169,13 +173,13 @@ namespace STRATEGY {
     }
   }
 
-  void GridStrategy::DumpStatus()
+  void GridStrategy::PrintStatus()
   {
     Logger::info("Active orders: " + to_string(m_activeOrders.size()));
     for (auto &oid : m_activeOrders)
     {
-      auto m = m_orderMeta[oid];
-      cout << " - " << oid << " " << (m.side==UTILS::Side::BUY?"BUY":"SELL") << " @"<< m.price << " qty="<<m.qty<<endl;
+          auto m = m_orderMeta[oid];
+          cout << " - " << oid << " " << (m.side==UTILS::Side::BUY ? "BUY" : "SELL") << " @" << m.price << " qty="<<m.qty<<endl;
     }
   }
 }

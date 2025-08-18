@@ -14,9 +14,10 @@
 
 namespace STRATEGY {
 
-  class GridStrategy {
+  class GridStrategy : public UTILS::Logging, public UTILS::ErrorHandler {
   public:
-    GridStrategy(std::shared_ptr<CORE::IOrderManager> orderManager, const std::string& path) : m_orderManager(orderManager), m_cfg(path), m_cp(m_cfg.m_instrument)
+    GridStrategy(std::shared_ptr<CORE::IOrderManager> orderManager, const std::string& path) :
+      Logging("GridStrategy"), ErrorHandler(pLogger()), m_orderManager(orderManager), m_cfg(path), m_cp(m_cfg.m_instrument)
     {
     }
 
@@ -26,7 +27,7 @@ namespace STRATEGY {
     void OnTicker();
     void PlaceInitialGrid();
     void CheckFilledOrders();
-    void DumpStatus();
+    void PrintStatus();
 
   private:
     std::shared_ptr<CORE::IOrderManager> m_orderManager;
