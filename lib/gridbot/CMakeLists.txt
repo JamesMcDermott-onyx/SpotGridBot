@@ -4,7 +4,7 @@ project(GridBot
         )
 
 set(SOURCE_FILES
-        ${GridBot_SOURCE_DIR}/src/gridstrategy.cpp
+        ${GridBot_SOURCE_DIR}/src/GridStrategy.cpp
         ${GridBot_SOURCE_DIR}/src/GridConfig.cpp
 )
 
