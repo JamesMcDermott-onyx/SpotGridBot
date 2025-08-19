@@ -77,6 +77,7 @@ void OrderBook::AddEntry(int64_t key, int64_t refKey, int64_t sendTime, int64_t 
 
 void OrderBook::AddQuote(CurrencyPair cp, bool bid, Quote::Ptr quote)
 {
+	auto midPrice=GetMidPrice(cp);
 	{
 		std::shared_lock lockMap { m_quoteVectorMap.Mutex() };
 		
@@ -152,15 +153,9 @@ void OrderBook::AddQuote(CurrencyPair cp, bool bid, Quote::Ptr quote)
 
 	std::atomic_store(&m_lastQuote, quote);
 
-	if (bid) {
-		if (quote->Price() > GetBestPrice(cp, bid)) {
-			m_action();
-		}
-	}
-	else {
-		if (quote->Price() < GetBestPrice(cp, bid)) {
-			m_action();
-		}
+	if ( midPrice != GetMidPrice(cp) ) //We have a different 'mid price' so we have price movement!
+	{
+		m_action(); //Need to recheck the GridBot current orders and fill status
 	}
 
 	// static int cnt=1;
