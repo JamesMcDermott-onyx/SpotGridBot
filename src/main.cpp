@@ -12,9 +12,8 @@
 #include "Poco/Util/Application.h"
 #include "Poco/URI.h"
 
-#include "exchange.h"
 #include "GridConfig.h"
-#include "gridstrategy.h"
+#include "GridStrategy.h"
 #include "OrderManager.h"
 
 using namespace CORE;

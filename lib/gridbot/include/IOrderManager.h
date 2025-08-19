@@ -1,4 +1,5 @@
 #pragma once
+#include "Utils/FixTypes.h"
 
 namespace UTILS {
   class CurrencyPair;
@@ -6,6 +7,19 @@ namespace UTILS {
 
 namespace CORE {
   class ConnectionManager;
+
+  enum class OrderSide { BUY, SELL };
+  enum class OrderStatus { NEW, PARTIALLY_FILLED, FILLED, CANCELED, REJECTED };
+
+  struct Order {
+    std::string id;
+    UTILS::Side side;
+    double price;
+    double quantity;      // original quantity
+    double filled = 0.0;  // filled so far
+    OrderStatus status = OrderStatus::NEW;
+  };
+
 
   class IOrderManager {
   public:

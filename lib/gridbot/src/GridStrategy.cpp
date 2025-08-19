@@ -1,8 +1,7 @@
 
 #include <bits/stdc++.h>
 
-#include "exchange.h"
-#include "gridstrategy.h"
+#include "GridStrategy.h"
 
 #include <Poco/Logger.h>
 
@@ -54,12 +53,12 @@ namespace STRATEGY {
             continue; // If no data (order not found), skip
         }
 
-        Order order = *maybe; // Unwrap the optional
+        CORE::Order order = *maybe; // Unwrap the optional
 
         //-----------------------------
         // CASE 1: Fully filled orders
         //-----------------------------
-        if (order.status == OrderStatus::FILLED)
+        if (order.status == CORE::OrderStatus::FILLED)
         {
             if (m_orderMeta[orderId].side == UTILS::Side::BUY)
             {
@@ -107,7 +106,7 @@ namespace STRATEGY {
         //-----------------------------
         // CASE 2: Partially filled orders
         //-----------------------------
-        else if (order.status == OrderStatus::PARTIALLY_FILLED)
+        else if (order.status == CORE::OrderStatus::PARTIALLY_FILLED)
         {
             // Get how much is currently filled
             double filled = order.filled;
@@ -154,7 +153,7 @@ namespace STRATEGY {
         //-----------------------------
         // CASE 3: Failed or canceled orders
         //-----------------------------
-        else if (order.status == OrderStatus::REJECTED || order.status == OrderStatus::CANCELED)
+        else if (order.status == CORE::OrderStatus::REJECTED || order.status == CORE::OrderStatus::CANCELED)
         {
             toRemove.push_back(orderId);
         }
@@ -173,11 +172,11 @@ namespace STRATEGY {
 
   void GridStrategy::PrintStatus()
   {
-    Logger::info("Active orders: " + to_string(m_activeOrders.size()));
-    for (auto &orderId : m_activeOrders)
-    {
-          auto m = m_orderMeta[orderId];
-          cout << " - " << orderId << " " << (m.side==UTILS::Side::BUY ? "BUY" : "SELL") << " @" << m.price << " qty="<<m.qty<<endl;
-    }
+        poco_information_f1(logger(), "Active orders: %s",to_string(m_activeOrders.size()));
+        for (auto &orderId : m_activeOrders)
+        {
+              auto m = m_orderMeta[orderId];
+              cout << " - " << orderId << " " << (m.side==UTILS::Side::BUY ? "BUY" : "SELL") << " @" << m.price << " qty="<<m.qty<<endl;
+        }
   }
 }

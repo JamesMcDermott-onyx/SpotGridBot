@@ -4,7 +4,6 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "exchange.h"
 #include "IOrderManager.h"
 #include "Utils/CurrencyPair.h"
 #include "Utils/ErrorHandler.h"
