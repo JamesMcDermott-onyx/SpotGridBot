@@ -49,6 +49,8 @@ int main(int argc, char** argv)
 
         poco_information(logger, "SpotGridBot has started - press <enter> to exit ..");
         std::cin.get();
+
+        m_connectionManager->Disconnect();
     }
     catch (Poco::Exception& e) // explicitly catch poco exceptions
     {
