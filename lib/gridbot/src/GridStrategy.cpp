@@ -88,7 +88,7 @@ namespace STRATEGY {
                 // Check if we have enough 'quote currency' to buy back
                 double quote = m_orderManager->GetBalance(m_cp.QuoteCCY());
                 double cost = buyPrice * m_orderMeta[orderId].qty;
-                if (quote + 1e-12 < cost)
+                if (UTILS::Round<double>(quote) < cost)
                 {
                     poco_warning(logger(), "Insufficient 'quote currency' to place re-buy");
                 }
@@ -175,8 +175,8 @@ namespace STRATEGY {
         poco_information_f1(logger(), "Active orders: %s",to_string(m_activeOrders.size()));
         for (auto &orderId : m_activeOrders)
         {
-              auto m = m_orderMeta[orderId];
-              cout << " - " << orderId << " " << (m.side==UTILS::Side::BUY ? "BUY" : "SELL") << " @" << m.price << " qty="<<m.qty<<endl;
+            auto m = m_orderMeta[orderId];
+            cout << " - " << orderId << " " << (m.side==UTILS::Side::BUY ? "BUY" : "SELL") << " @" << m.price << " qty="<<m.qty<<endl;
         }
   }
 }
