@@ -214,6 +214,38 @@ std::string ConnectionORD::CancelOrder(const UTILS::CurrencyPair &instrument, co
 	return msg;
 }
 
+std::string ConnectionORD::QueryOrder(const UTILS::CurrencyPair &instrument, const std::string &orderId,
+						   const std::optional<std::string> &origClientOrderId) {
+
+	const std::string requestPath("orders/");
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "POST");
+	std::string body("{ \"order_ids\": [ \""+orderId +"\"]}");
+
+	std::string msg = DoWebRequest(m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_POST, [&](std::string &path)
+	{
+
+	},
+	[&](Poco::Net::HTTPRequest &request)
+						{
+							request.add("content-type", "application/json");
+							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
+							request.add("CB-ACCESS-PASSPHRASE",  std::get<CB_ACCESS_PASSPHRASE>(header));
+							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
+							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
+						},
+	[&](const Poco::Net::HTTPResponse &response)
+	{
+		m_logger.Session().Information(response.getReason());
+	},
+	[&](std::ostream &ostr) {
+		ostr << body;
+		m_logger.Protocol().Outging(body);
+	});
+
+	m_logger.Protocol().Incoming(msg);
+	return msg;
+}
+
 
 //==============================================================================
 // Binance web request wrapper

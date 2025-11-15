@@ -11,6 +11,16 @@ namespace CORE {
   enum class OrderSide { BUY, SELL };
   enum class OrderStatus { NEW, PARTIALLY_FILLED, FILLED, CANCELED, REJECTED };
 
+  inline OrderStatus order_status(const std::string& status) {
+    if (status == "NEW")               return OrderStatus::NEW;
+    if (status == "PARTIALLY_FILLED")  return OrderStatus::PARTIALLY_FILLED;
+    if (status == "FILLED")            return OrderStatus::FILLED;
+    if (status == "CANCELED")          return OrderStatus::CANCELED;
+    if (status == "REJECTED")          return OrderStatus::REJECTED;
+
+    throw std::invalid_argument("Invalid OrderStatus string: " + status);
+  }
+
   struct Order {
     std::string id;
     UTILS::Side side;

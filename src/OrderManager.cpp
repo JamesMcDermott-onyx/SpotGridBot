@@ -58,7 +58,17 @@ namespace CORE {
         if (!m_orders.count(orderId))
             return {};
 
-        return m_orders[orderId];
+        CRYPTO::JSONDocument response(m_connectionManager->OrderConnection()->QueryOrder(cp, orderId));
+
+        if (response.GetValue<std::string>("success").compare("true")==0)
+        {
+            m_orders[orderId].status = order_status(response.GetValue<std::string>("status"));
+            m_orders[orderId].filled = response.GetValue<double>("filled_size");
+
+            return m_orders[orderId];
+        }
+
+        return {};
     }
 
     double OrderManager::GetBalance(const UTILS::Currency &currency)

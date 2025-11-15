@@ -24,8 +24,6 @@ namespace STRATEGY {
     ~GridStrategy() = default;
 
     void Start();
-
-    void PlaceInitialGrid();
     void CheckFilledOrders();
     void PrintStatus();
 
@@ -33,9 +31,9 @@ namespace STRATEGY {
     std::shared_ptr<CORE::IOrderManager> m_orderManager;
     GridConfig m_cfg;
     std::vector<std::string> m_activeOrders;
-    struct Meta { UTILS::Side side; double price; double qty; };
+    struct OrderDetails { UTILS::Side side; double price; double qty; };
 
-    std::unordered_map<std::string, Meta> m_orderMeta;
+    std::unordered_map<std::string, OrderDetails> m_orderDetails;
     std::unordered_map<std::string, double> m_knownFills;
     UTILS::CurrencyPair m_cp;
   };
