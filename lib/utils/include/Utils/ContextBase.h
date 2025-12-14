@@ -77,10 +77,6 @@ public:
 	 */
 	virtual bool StoreStopWatch(StopWatch &stopWatch, const std::string &collectionSuffix) { return false; };
 	
-	virtual bool StoreMidRates() { return false; };
-	
-	virtual bool LoadMidRates() { return false; };
-	
 	int64_t LoggingFlags() const { return m_loggingFlags.load(); }
     
     void SetLoggingFlag(int64_t flag, bool on)

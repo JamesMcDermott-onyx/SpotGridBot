@@ -73,7 +73,7 @@ BoolResult ConnectionBase::Connect()
 																		 poco_information(logger(), "received PING");
 																		 m_ws->sendFrame(m_buffer, 1,
 																						 WebSocket::FRAME_FLAG_FIN | WebSocket::FRAME_OP_PONG);
-																		 poco_information(logger(), "sent successfully");
+																		 poco_information(logger(), "sent PONG successfully");
 																		 continue;
 																	 }
 																	 if ((flags & WebSocket::FRAME_OP_BITMASK) == WebSocket::FRAME_OP_PONG)

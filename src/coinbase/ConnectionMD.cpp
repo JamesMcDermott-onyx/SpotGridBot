@@ -2,6 +2,7 @@
 #include "CryptoCommon.h"
 
 #include "coinbase/Messages.h"
+#include "coinbase/JWTGenerator.h"
 #include "coinbase/ConnectionMD.h"
 #include "Poco/URI.h"
 
@@ -70,22 +71,6 @@ namespace CORE {
             return GetCurrencyPair(TranslateSymbol(msg->GetValue<std::string>("product_id")));
         }
 
-        //Create a Market Data authentication signature
-        const CRYPTO::AuthHeader ConnectionMD::GetAuthHeader() {
-            auto cb_access_timestamp = std::to_string(UTILS::CurrentTimestamp() / 1000000000); //as seconds
-            auto cb_access_method{"GET"};
-            auto cb_access_request_path{"/users/self/verify"};
-
-            //Now build the signature...
-            auto msg = cb_access_timestamp + cb_access_method + cb_access_request_path;
-
-            const auto decodedKey = libbase64::decode<std::string, char, unsigned char, true>(m_settings.m_secretkey);
-            const auto digest = HMAC(EVP_sha256(), decodedKey.c_str(), decodedKey.size(), (unsigned char *) msg.c_str(), msg.size(), NULL, NULL);
-            const auto cb_access_sign = libbase64::encode<std::string, char, unsigned char, true>(digest, SHA256_DIGEST_LENGTH);
-
-            return CRYPTO::AuthHeader(cb_access_sign, m_settings.m_apikey, m_settings.m_passphrase, cb_access_timestamp);
-        }
-
         //----------------------------------------------------------------------
         void ConnectionMD::Subscribe(const CRYPTO::ConnectionBase::TInstruments &instruments, const std::string &method,
                                      const std::string &channels) {
@@ -94,22 +79,10 @@ namespace CORE {
                 prods += (prods.empty() ? "" : ",") + std::string("\"") + inst + "\"";
             }
 
-            std::string payload;
+            std::string payload = "{ \"type\": \"" + method + "\", \"product_ids\": [" + prods + "], \"channel\":  \"" + channels
+                        + "\" , \"jwt\": \"" + create_jwt(m_settings.m_apikey, m_settings.m_secretkey) +"\"}";
 
-            if (m_settings.m_apikey.empty() && m_settings.m_secretkey.empty() && m_settings.m_passphrase.empty()) {
-                //use the public feed, no authentication required..
-                payload = "{ \"type\": \"" + method + "\", \"product_ids\": [" + prods + "], \"channels\": [\"" +
-                          channels + "\"] }";
-            } else {
-                // Use direct feed, authentication attributes required..
-                CRYPTO::AuthHeader header = GetAuthHeader();
-                payload =
-                        "{ \"type\": \"" + method + "\", \"product_ids\": [" + prods + "], \"channel\":  \"" + channels
-                        + "\" , \"signature\": \"" + std::get<0>(
-                            header) + "\",\"key\":\"" + std::get<1>(header) + "\",\"passphrase\":\"" + std::get<2>(
-                            header) + "\",\"timestamp\":\"" + std::get<3>(header) + "\"}";
-            }
-
+            // std::string payload = "{ \"type\": \"" + method + "\", \"product_ids\": [" + prods + "], \"channel\":  \"" + channels + "\" }";
             Send(payload);
         }
     }

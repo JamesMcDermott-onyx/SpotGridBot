@@ -51,8 +51,6 @@ private:
 	}
 
 	void Subscribe(const CRYPTO::ConnectionBase::TInstruments &instruments, const std::string &method, const std::string &channel);
-
-	const CRYPTO::AuthHeader GetAuthHeader();
 };
 }
 }

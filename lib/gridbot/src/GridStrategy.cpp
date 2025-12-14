@@ -39,6 +39,8 @@ namespace STRATEGY {
   {
     vector<string> toRemove; // store orders to remove after iteration
 
+    poco_information(logger(), "Checking filled state...");
+
     // Loop over all active orders we’re tracking
     for (auto &orderId : m_activeOrders)
     {

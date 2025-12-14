@@ -36,7 +36,7 @@ public:
 		pLoggingConfig->load(loggingPropsPath);
 		auto path = pLoggingConfig->getString("logging.channels.fileChannel.path");
 		path = path.substr(0, path.find_last_of("/") + 1);
-		channel->setProperty("path", path + name + "."+settings.m_protocol+".log." + settings.m_name + "." + settings.m_apikey);
+		channel->setProperty("path", path + name+"."+settings.m_name + "."+settings.m_protocol+".log");
 		
 		Poco::AutoPtr<Poco::FormattingChannel> pfc(new Poco::FormattingChannel(pf, channel));
 		

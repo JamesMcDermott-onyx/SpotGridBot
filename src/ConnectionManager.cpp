@@ -126,8 +126,7 @@ bool ConnectionManager::LoadConfig(const UTILS::XmlDocPtr &pDoc)
 							settings.m_host = UTILS::GetXmlAttribute(childNode, CRYPTO::ATTR_HOST, "");
 							settings.m_port = UTILS::GetXmlAttribute(childNode, CRYPTO::ATTR_PORT, CRYPTO::ATTR_PORT_DEFAULT);
 							settings.m_orders_http = UTILS::GetXmlAttribute(childNode, CRYPTO::ATTR_ORDERS_HTTP, "");
-							settings.m_snapshot_http = UTILS::GetXmlAttribute(childNode, CRYPTO::ATTR_SNAPSHOT_HTTP,
-																			  "https://api.binance.com/api/v3/depth?symbol=INSTRUMENT&limit=5000");
+							settings.m_snapshot_http = UTILS::GetXmlAttribute(childNode, CRYPTO::ATTR_SNAPSHOT_HTTP,"");
 							settings.m_apikey = UTILS::GetXmlAttribute(childNode, CRYPTO::ATTR_APIKEY, "");
 							settings.m_secretkey = UTILS::GetXmlAttribute(childNode, CRYPTO::ATTR_SECRETKEY, "");
 							settings.m_recvWindow = UTILS::GetXmlAttribute(childNode, CRYPTO::ATTR_RECVWINDOW, CRYPTO::ATTR_RECVWINDOW_DEFAULT);

@@ -41,7 +41,7 @@ int main(int argc, char** argv)
         auto m_orderManager = make_shared<OrderManager>(m_connectionManager);
 
         STRATEGY::GridStrategy strat(m_orderManager, options.ConfigPath());
-        strat.Start();
+        //strat.Start();
 
         m_orderBook->Initialise([&strat]() { strat.CheckFilledOrders(); });
 

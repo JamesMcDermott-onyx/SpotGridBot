@@ -33,13 +33,25 @@
 <!--                 order_monitoring_interval="5000"-->
 <!--        />-->
 
+        <!--        <Session name="COINBASE_TR_01"-->
+        <!--                     num_id="637"-->
+        <!--                     sand_host="ws-feed-public.sandbox.exchange.coinbase.com"-->
+        <!--                     host="ws-feed.pro.coinbase.com"-->
+        <!--                     host_direct="ws-direct.exchange.coinbase.com"-->
+        <!--                     api_key=""-->
+        <!--                     secret_key=""-->
+        <!--                     port="443"-->
+        <!--                     channel="level2,heartbeat"-->
+        <!--        />-->
+
         <Session name="COINBASEMD"
                      num_id="3"
-                     host="ws-feed-public.sandbox.exchange.coinbase.com"
-                     api_key=""
-                     secret_key=""
+                     host="advanced-trade-ws.coinbase.com"
+                     portfolio="TEST_API"
+                     api_key="organizations/a9df3ebf-0eb3-4667-8f8c-493ea6e5f73f/apiKeys/2930fb2a-c257-408f-a4a0-8c228c3435d9"
+                     secret_key="-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIKrF3dQQU+aOrCdBuGtZPWKgqBk74wBKyEayZDF7ehgvoAoGCCqGSM49\nAwEHoUQDQgAE8U6PxTdpbfYDciXC/Mi88Sq1MWTxOl7Z1FDgVx8t1exvhrW8YUDW\ngBJ9T8h6k/o+TGCFKrjfT4ahe7w+0jsy4Q==\n-----END EC PRIVATE KEY-----\n"
                      port="443"
-                     channels="level2_batch"
+                     channels="level2"
                      schema="Coinbase:MD"
                      instruments="BTC/USD"
         />
@@ -48,8 +60,8 @@
                      num_id="4"
                      protocol="rest"
                      orders_http="https://api-sandbox.coinbase.com/api/v3/brokerage/"
-                     _api_key="e76bd7dcb86bc4f89689a210d6a64c70"
-                     _secret_key="y/NKb3m8MbaDIo/xW4JCh4/F/svi3TxoESMVF742RfUA8iYrOAsZTlbkrZ6U6bUWBtkhEDxE46EKcJ4pKNFqow=="
+                     api_key="organizations/a9df3ebf-0eb3-4667-8f8c-493ea6e5f73f/apiKeys/2930fb2a-c257-408f-a4a0-8c228c3435d9"
+                     secret_key="-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIKrF3dQQU+aOrCdBuGtZPWKgqBk74wBKyEayZDF7ehgvoAoGCCqGSM49\nAwEHoUQDQgAE8U6PxTdpbfYDciXC/Mi88Sq1MWTxOl7Z1FDgVx8t1exvhrW8YUDW\ngBJ9T8h6k/o+TGCFKrjfT4ahe7w+0jsy4Q==\n-----END EC PRIVATE KEY-----\n"
                      port="443"
                      passphrase="thsv5x4pwhmo"
                      schema="Coinbase:ORD"
