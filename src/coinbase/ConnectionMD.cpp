@@ -2,11 +2,52 @@
 #include "CryptoCommon.h"
 
 #include "coinbase/Messages.h"
-#include "coinbase/JWTGenerator.h"
+#include "coinbase/helper_functions.h"
 #include "coinbase/ConnectionMD.h"
 #include "Poco/URI.h"
+#include <vector>
+#include <jwt-cpp/jwt.h>
+#include "nlohmann/json.hpp"
 
-#include "libbase64.hpp"
+
+#include <Poco/Net/HTTPSClientSession.h>
+#include <Poco/Net/WebSocket.h>
+#include <Poco/Net/SSLManager.h>
+#include <Poco/Net/Context.h>
+#include <Poco/Net/AcceptCertificateHandler.h>
+#include <Poco/URI.h>
+#include <Poco/JSON/Object.h>
+#include <Poco/JSON/Stringifier.h>
+
+namespace {
+
+    using namespace Poco::Net;
+
+    void initSSL()
+    {
+        static bool inited = false;
+        if (inited) return;
+
+        Context::Ptr context = new Context(
+            Context::CLIENT_USE,
+            "",
+            "",
+            "",
+            Context::VERIFY_RELAXED,
+            9,
+            false,
+            "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH"
+        );
+
+        SSLManager::instance().initializeClient(
+            nullptr,
+            new AcceptCertificateHandler(false),
+            context
+        );
+
+        inited = true;
+    }
+}
 
 using namespace UTILS;
 
@@ -15,6 +56,8 @@ namespace CORE {
         //----------------------------------------------------------------------
         ConnectionMD::ConnectionMD(const CRYPTO::Settings &settings, const std::string &loggingPropsPath, const ConnectionManager& connectionManager)
             : ConnectionBase(settings, loggingPropsPath, settings.m_name, connectionManager) {
+
+            initSSL();
 
             GetMessageProcessor().Register([](const std::shared_ptr<CRYPTO::JSONDocument> message)
                                             {
@@ -74,16 +117,27 @@ namespace CORE {
         //----------------------------------------------------------------------
         void ConnectionMD::Subscribe(const CRYPTO::ConnectionBase::TInstruments &instruments, const std::string &method,
                                      const std::string &channels) {
-            std::string prods;
-            for (const auto &inst: instruments) {
-                prods += (prods.empty() ? "" : ",") + std::string("\"") + inst + "\"";
-            }
+            // std::string prods;
+            // for (const auto &inst: instruments) {
+            //     prods += (prods.empty() ? "" : ",") + std::string("\"") + inst + "\"";
+            // }
 
-            std::string payload = "{ \"type\": \"" + method + "\", \"product_ids\": [" + prods + "], \"channel\":  \"" + channels
-                        + "\" , \"jwt\": \"" + create_jwt(m_settings.m_apikey, m_settings.m_secretkey) +"\"}";
+            // std::string payload = "{ \"type\": \"" + method + "\", \"product_ids\": [" + prods + "], \"channel\":  \"" + channels
+            //             + "\" , \"jwt\": \"" + create_jwt(m_settings.m_apikey, m_settings.m_secretkey) +"\"}";
 
-            // std::string payload = "{ \"type\": \"" + method + "\", \"product_ids\": [" + prods + "], \"channel\":  \"" + channels + "\" }";
-            Send(payload);
+            //nlohmann::json payload = "{ \"type\": \"" + method + "\", \"product_ids\": [" + prods + "], \"channel\":  \"" + channels + "\" }";
+
+
+            std::vector<std::string> products = { "BTC-USD" };
+
+            nlohmann::json payload = {
+                {"type", "subscribe"},
+                {"channel", "level2"},
+                {"product_ids", products}
+            };
+
+            auto signed_payload = sign_with_jwt(payload);
+            Send(signed_payload);
         }
     }
 }

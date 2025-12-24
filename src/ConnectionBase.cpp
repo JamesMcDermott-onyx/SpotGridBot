@@ -41,6 +41,7 @@ BoolResult ConnectionBase::Connect()
 	{
 		try
 		{
+			poco_information_f2(logger(), "Session '%s' connecting to endpoint %s ", m_settings.m_name, m_settings.m_host );
 			CreateWebSocket();
 		}
 		catch (Poco::Exception &e)
@@ -71,8 +72,12 @@ BoolResult ConnectionBase::Connect()
 																	 if ((flags & WebSocket::FRAME_OP_BITMASK) == WebSocket::FRAME_OP_PING)
 																	 {
 																		 poco_information(logger(), "received PING");
-																		 m_ws->sendFrame(m_buffer, 1,
-																						 WebSocket::FRAME_FLAG_FIN | WebSocket::FRAME_OP_PONG);
+																	 	m_ws->sendFrame(
+																			 m_buffer,
+																			 bytes,  // ✅ MUST echo full payload
+																			 WebSocket::FRAME_FLAG_FIN | WebSocket::FRAME_OP_PONG
+																		 );
+
 																		 poco_information(logger(), "sent PONG successfully");
 																		 continue;
 																	 }
@@ -82,22 +87,26 @@ BoolResult ConnectionBase::Connect()
 																		 continue;
 																	 }
 
-																 	 if ((flags & WebSocket::FRAME_OP_BITMASK) == WebSocket::FRAME_OP_CLOSE)
-																 	 {
+																 	if ((flags & WebSocket::FRAME_OP_BITMASK) == WebSocket::FRAME_OP_CLOSE)
+																 	{
 																		 poco_error(logger(), "socket closed at source...");
-																 	  	 m_connected=false;
+																		 m_ws->sendFrame(nullptr, 0,
+																			 WebSocket::FRAME_FLAG_FIN | WebSocket::FRAME_OP_CLOSE);
+																		 m_connected = false;
 																		 return;
 																	 }
+
 
 																	 // Processing bytes
 																	 if (bytes)
 																	 {
+																	 	std::string msg(m_buffer, bytes);
 																		 const auto res = GetMessageProcessor().ProcessMessage(
-																				 std::make_shared<CRYPTO::JSONDocument>(m_buffer));
+																				 std::make_shared<CRYPTO::JSONDocument>(msg));
 																		 if (!res)
 																		 {
 																			 poco_error_f2(logger(), "Message processor error: %s [buffer='%s']",
-																						   res.ErrorMessage(), std::string(m_buffer));
+																						   res.ErrorMessage(), msg);
 																		 }
 																		 
 																		 m_logger.Protocol().Incoming(m_buffer);
@@ -132,7 +141,7 @@ BoolResult ConnectionBase::Connect()
 
 		const auto instruments = GetInstruments();
 		Subscribe(instruments);
-		Snapshot(instruments);
+		//Snapshot(instruments);
 	}
 	else
 	{
@@ -161,15 +170,9 @@ void ConnectionBase::Disconnect()
 	m_messageProcessor.Stop();
 	m_logger.Session().Stop(m_settings.m_name);
 	
-	poco_information_f1(logger(), "Session '%s' has stopped", m_settings.m_name);
+	poco_information_f1(logger(), "Session '%s' has disconnected", m_settings.m_name);
 }
 
-
-//------------------------------------------------------------------------------
-/*! \brief Helper: sends a payload to websocket
-* @param payload: payload to be sent
-* @return: true in success
-* */
 bool ConnectionBase::Send(const std::string &payload)
 {
 	if (!m_ws)
@@ -180,11 +183,16 @@ bool ConnectionBase::Send(const std::string &payload)
 
 	poco_information_f1(logger(), "Sending data %s", payload);
 
-	m_ws->sendFrame(payload.data(), static_cast<int>(payload.size()));
+	m_ws->sendFrame(
+		payload.data(),
+		static_cast<int>(payload.size()),
+		Poco::Net::WebSocket::FRAME_TEXT
+	);
+
 	m_logger.Protocol().Outging(payload);
-	
 	return true;
 }
+
 
 
 //------------------------------------------------------------------------------//
@@ -230,7 +238,7 @@ UTILS::BoolResult ConnectionBase::SubscribeInstrument(const std::string &symbol)
 	m_settings.m_instruments += (m_settings.m_instruments.empty() ? "" : ",") + instStr;
 	
 	// Request snapshot and subscribe
-	Snapshot({ instStr });
+	//Snapshot({ instStr });
 	Subscribe({ instStr });
 	return true;
 }

@@ -17,6 +17,8 @@ target_include_directories(SpotGridBot PRIVATE
         "${SpotGridBot_SOURCE_DIR}/lib/util/include"
         "${SpotGridBot_SOURCE_DIR}/lib/orderbook/include"
         "${SpotGridBot_SOURCE_DIR}/lib/gridbot/include"
+        "${SpotGridBot_SOURCE_DIR}/external/json/include"
+        "${SpotGridBot_SOURCE_DIR}/external/jwt-cpp/include"
         )
 
 target_link_libraries(SpotGridBot PUBLIC
