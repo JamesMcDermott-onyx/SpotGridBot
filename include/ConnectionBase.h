@@ -33,7 +33,7 @@ namespace CORE {
 namespace CORE {
 
 namespace CRYPTO {
-const size_t MAX_BUFF = 2000000;
+const size_t MAX_BUFF = 10000000;  // 10MB buffer for large WebSocket messages (e.g., level2 snapshots)
 const std::string JSON_ERROR_NOT_IMPLEMENTED = CreateJSONMessageWithCode("Not implemented");
 // If connection thread has more exceptions in a row than this, connection breaks:
 const int MAX_NUMBER_OF_EXCEPTIONS_IN_CONNECTION_THREAD = 100;
@@ -193,6 +193,7 @@ private:
 	MessageQueue m_messageQueue;
 	
 	char m_buffer[MAX_BUFF] { };
+	std::string m_fragmentedMessage; // Accumulator for fragmented WebSocket messages
 
 	std::unique_ptr<std::thread> m_listenerThread;
 	

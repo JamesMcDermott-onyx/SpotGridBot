@@ -5,6 +5,7 @@
 #pragma once
 
 #include <memory>
+#include <algorithm>
 
 #include "Poco/Logger.h"
 #include "Poco/FileChannel.h"
@@ -76,7 +77,12 @@ public:
 		pLoggingConfig->load(loggingPropsPath);
 		auto path = pLoggingConfig->getString("logging.channels.fileChannel.path");
 		path = path.substr(0, path.find_last_of("/") + 1);
-		channel->setProperty("path", path + name + "."+settings.m_protocol+".log." + settings.m_name + "." + settings.m_apikey);
+		
+		// Sanitize the API key for use in filename (replace slashes with underscores)
+		std::string sanitized_apikey = settings.m_apikey;
+		std::replace(sanitized_apikey.begin(), sanitized_apikey.end(), '/', '_');
+		
+		channel->setProperty("path", path + name + "."+settings.m_protocol+".log." + settings.m_name + "." + sanitized_apikey);
 
 		Poco::AutoPtr<Poco::FormattingChannel> pfc(new Poco::FormattingChannel(pf, channel));
 

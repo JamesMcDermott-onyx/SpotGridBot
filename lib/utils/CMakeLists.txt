@@ -25,7 +25,7 @@ add_library(Utils SHARED ${SOURCE_FILES})
 target_include_directories(Utils PUBLIC "${Utils_SOURCE_DIR}/include/")
 
 target_link_libraries(Utils PUBLIC
-        PocoFoundation
-        PocoUtil
-        PocoXML
+        Poco::Foundation
+        Poco::Util
+        Poco::XML
 )

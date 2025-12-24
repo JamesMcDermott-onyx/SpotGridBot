@@ -22,12 +22,14 @@ target_include_directories(SpotGridBot PRIVATE
         )
 
 target_link_libraries(SpotGridBot PUBLIC
-                        PocoFoundation
-                        PocoUtil
-                        PocoNet
-                        PocoNetSSL
-                        PocoJSON
-                        PocoData
+                        Poco::Foundation
+                        Poco::Util
+                        Poco::Net
+                        Poco::NetSSL
+                        Poco::JSON
+                        Poco::Data
+                        jwt-cpp::jwt-cpp
+                        nlohmann_json::nlohmann_json
                         protobuf
                         crypto
                         ${Utils_BINARY_DIR}/libUtils.so

@@ -2,8 +2,8 @@
 #include "CryptoCommon.h"
 
 #include "coinbase/Messages.h"
-#include "coinbase/helper_functions.h"
 #include "coinbase/ConnectionMD.h"
+#include "coinbase/helper_functions.h"
 #include "Poco/URI.h"
 #include <vector>
 #include <jwt-cpp/jwt.h>
@@ -61,23 +61,13 @@ namespace CORE {
 
             GetMessageProcessor().Register([](const std::shared_ptr<CRYPTO::JSONDocument> message)
                                             {
+                                                // Try "channel" field first (new Advanced Trade API)
+                                                auto channel = message->GetValue<std::string>("channel");
+                                                if (!channel.empty())
+                                                    return channel;
+                                                // Fall back to "type" field (old API)
                                                 return message->GetValue<std::string>("type");
                                             });
-
-            // Register messages
-            GetMessageProcessor().Register(MSG_TYPE_SNAPSHOT, [this](const std::shared_ptr<CRYPTO::JSONDocument> jd) {
-                auto cp = GetCurrency(jd);
-                if (!cp.Valid()) {
-                    poco_error(logger(), "Invalid (or not supported) instrument ignored");
-                    return;
-                }
-                const auto update = ParseMessage(jd, "bids", "asks");
-                PublishQuotes(ParseQuote(update->Bids, QuoteType::BID, cp));
-                PublishQuotes(ParseQuote(update->Asks, QuoteType::OFFER, cp));
-
-                poco_information_f2(logger(), "QT_SNAPSHOT %s bid Levels: %d ", cp.ToString(), int(update->Bids.size()));
-                poco_information_f2(logger(), "QT_SNAPSHOT %s ask Levels: %d ", cp.ToString(), int(update->Asks.size()));
-            });
 
             GetMessageProcessor().Register(MSG_TYPE_L2UPDATE, [this](const std::shared_ptr<CRYPTO::JSONDocument> jd) {
                 auto cp = GetCurrency(jd);
@@ -107,6 +97,52 @@ namespace CORE {
                                            [this](const std::shared_ptr<CRYPTO::JSONDocument> jd) {
                                                poco_information(logger(), "Received Subscription response..");
                                            });
+
+            // Handler for new Advanced Trade API l2_data channel
+            GetMessageProcessor().Register(MSG_TYPE_L2DATA, [this](const std::shared_ptr<CRYPTO::JSONDocument> jd) {
+                // New format: {"channel":"l2_data","events":[{"type":"update","product_id":"BTC-USD","updates":[...]}]}
+                auto events = jd->GetArray("events");
+                if (!events || events->size() == 0) {
+                    poco_warning(logger(), "l2_data message has no events");
+                    return;
+                }
+                
+                Poco::Dynamic::Array eventsArray = *events;
+                
+                // Process each event in the array
+                for (size_t i = 0; i < events->size(); i++) {
+                    auto eventObj = eventsArray[i].extract<Poco::JSON::Object::Ptr>();
+                    if (!eventObj) continue;
+                    
+                    std::string product_id = eventObj->getValue<std::string>("product_id");
+                    auto cp = GetCurrencyPair(TranslateSymbol(product_id));
+                    if (!cp.Valid()) {
+                        poco_error(logger(), "Invalid (or not supported) instrument - ignored");
+                        continue;
+                    }
+                    
+                    std::string event_type = eventObj->getValue<std::string>("type");
+                    if (event_type == "update") {
+                        // Handle update: updates array with side, price_level, new_quantity
+                        auto updates = eventObj->getArray("updates");
+                        if (updates) {
+                            Poco::Dynamic::Array updatesArray = *updates;
+                            for (size_t j = 0; j < updates->size(); j++) {
+                                auto updateObj = updatesArray[j].extract<Poco::JSON::Object::Ptr>();
+                                if (!updateObj) continue;
+                                
+                                std::string side = updateObj->getValue<std::string>("side");
+                                std::string price = updateObj->getValue<std::string>("price_level");
+                                std::string qty = updateObj->getValue<std::string>("new_quantity");
+                                
+                                std::vector level{std::make_shared<CORE::CRYPTO::Level>(price, qty)};
+                                PublishQuotes(ParseQuote(level, (side == "bid" ? QuoteType::BID : QuoteType::OFFER), cp));
+                            }
+                            poco_information_f2(logger(), "l2_data UPDATE %s: %d updates", cp.ToString(), (int)updates->size());
+                        }
+                    }
+                }
+            });
         }
 
         //----------------------------------------------------------------------
@@ -117,22 +153,15 @@ namespace CORE {
         //----------------------------------------------------------------------
         void ConnectionMD::Subscribe(const CRYPTO::ConnectionBase::TInstruments &instruments, const std::string &method,
                                      const std::string &channels) {
-            // std::string prods;
-            // for (const auto &inst: instruments) {
-            //     prods += (prods.empty() ? "" : ",") + std::string("\"") + inst + "\"";
-            // }
 
-            // std::string payload = "{ \"type\": \"" + method + "\", \"product_ids\": [" + prods + "], \"channel\":  \"" + channels
-            //             + "\" , \"jwt\": \"" + create_jwt(m_settings.m_apikey, m_settings.m_secretkey) +"\"}";
-
-            //nlohmann::json payload = "{ \"type\": \"" + method + "\", \"product_ids\": [" + prods + "], \"channel\":  \"" + channels + "\" }";
-
-
-            std::vector<std::string> products = { "BTC-USD" };
+            std::vector<std::string> products;
+            for (const auto &inst: instruments) {
+                products.push_back(inst);
+            }
 
             nlohmann::json payload = {
                 {"type", "subscribe"},
-                {"channel", "level2"},
+                {"channel", channels},
                 {"product_ids", products}
             };
 

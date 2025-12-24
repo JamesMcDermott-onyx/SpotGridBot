@@ -21,7 +21,9 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     string(REPLACE ":" ";" LINK_DIRS "$ENV{LD_LIBRARY_PATH}")
     link_directories( ${LINK_DIRS} )
 
-    find_package(Poco 1.9 REQUIRED Foundation Util Net JSON)
+    find_package(Poco 1.9 REQUIRED Foundation Util Net JSON XML NetSSL Crypto Data)
+    find_package(jwt-cpp CONFIG REQUIRED)
+    find_package(nlohmann_json CONFIG REQUIRED)
 
     include_directories(
             ${SpotGridBot_SOURCE_DIR}/lib/utils/include
