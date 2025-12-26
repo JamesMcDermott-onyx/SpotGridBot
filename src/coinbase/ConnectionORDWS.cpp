@@ -65,6 +65,56 @@ ConnectionORDWS::ConnectionORDWS(const CRYPTO::Settings &settings, const std::st
 	{
 		poco_information(logger(), "Received subscriptions confirmation");
 	});
+
+	// Register handler for "user" channel messages (snapshots and updates)
+	GetMessageProcessor().Register("user", [this](const std::shared_ptr<CRYPTO::JSONDocument> jd)
+	{
+		auto events = jd->GetArray("events");
+		if (!events || events->size() == 0)
+		{
+			poco_debug(logger(), "user channel message has no events");
+			return;
+		}
+
+		Poco::Dynamic::Array eventsArray = *events;
+		for (size_t i = 0; i < events->size(); i++)
+		{
+			auto eventObj = eventsArray[i].extract<Poco::JSON::Object::Ptr>();
+			if (!eventObj) continue;
+
+			std::string event_type = eventObj->getValue<std::string>("type");
+			
+			if (event_type == "snapshot")
+			{
+				// Initial snapshot of orders and positions
+				poco_information(logger(), "Received user snapshot");
+				
+				if (eventObj->has("orders"))
+				{
+					auto orders = eventObj->getArray("orders");
+					if (orders && orders->size() > 0)
+					{
+						poco_information_f1(logger(), "Snapshot contains %d active orders", (int)orders->size());
+						// Process existing orders if needed
+					}
+					else
+					{
+						poco_debug(logger(), "Snapshot: no active orders");
+					}
+				}
+			}
+			else if (event_type == "update")
+			{
+				// Order update event
+				poco_information(logger(), "Received user order update");
+				OnOrderUpdate(jd);
+			}
+			else
+			{
+				poco_debug_f1(logger(), "Unhandled user event type: %s", event_type);
+			}
+		}
+	});
 }
 
 //------------------------------------------------------------------------------

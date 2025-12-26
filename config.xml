@@ -46,15 +46,33 @@
         />
 
         <Session name="COINBASEORD"
-                     num_id="4"
-                     protocol="rest"
-                     orders_http="https://api-sandbox.coinbase.com/api/v3/brokerage/"
-                     api_key="organizations/a9df3ebf-0eb3-4667-8f8c-493ea6e5f73f/apiKeys/2930fb2a-c257-408f-a4a0-8c228c3435d9"
-                     secret_key="-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIKrF3dQQU+aOrCdBuGtZPWKgqBk74wBKyEayZDF7ehgvoAoGCCqGSM49\nAwEHoUQDQgAE8U6PxTdpbfYDciXC/Mi88Sq1MWTxOl7Z1FDgVx8t1exvhrW8YUDW\ngBJ9T8h6k/o+TGCFKrjfT4ahe7w+0jsy4Q==\n-----END EC PRIVATE KEY-----\n"
-                     port="443"
-                     passphrase="thsv5x4pwhmo"
-                     schema="Coinbase:ORD"
+                num_id="4"
+                protocol="ws"
+                host="advanced-trade-ws.coinbase.com"
+                port="443"
+                api_key="organizations/a9df3ebf-0eb3-4667-8f8c-493ea6e5f73f/apiKeys/2930fb2a-c257-408f-a4a0-8c228c3435d9"
+                secret_key="-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIKrF3dQQU+aOrCdBuGtZPWKgqBk74wBKyEayZDF7ehgvoAoGCCqGSM49\nAwEHoUQDQgAE8U6PxTdpbfYDciXC/Mi88Sq1MWTxOl7Z1FDgVx8t1exvhrW8YUDW\ngBJ9T8h6k/o+TGCFKrjfT4ahe7w+0jsy4Q==\n-----END EC PRIVATE KEY-----\n"
+                passphrase=""
+                schema="Coinbase:ORD"
         />
+        
+
+
+
+
+        <!-- <Session name="COINBASEORD"  -->
+        <!--       num_id="4"  -->
+        <!--       protocol="rest" -->
+        <!--       orders_http="https://api-sandbox.coinbase.com/api/v3/brokerage/"  -->
+        <!--       api_key="organizations/a9df3ebf-0eb3-4667-8f8c-493ea6e5f73f/apiKeys/2930fb2a-c257-408f-a4a0-8c228c3435d9"  -->
+        <!--       secret_key=""  -->
+        <!--       port="443"  -->
+        <!--       passphrase="thsv5x4pwhmo"  -->
+        <!--       schema="Coinbase:ORD"  -->
+        <!-- /> -->
+
+
+
 
 <!--        <Session name="OKX_TR_01"-->
 <!--                 num_id="999206"-->
@@ -81,6 +99,7 @@
 <!--            <Parameter name="orders_limit_period_in_seconds" value="2"/>-->
 <!--            <Parameter name="orders_limit_max" value="60"/>-->
 <!--        </Session>-->
+
 
     </SessionConfig>
 

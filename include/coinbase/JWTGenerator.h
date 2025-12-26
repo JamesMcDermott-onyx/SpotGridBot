@@ -8,8 +8,21 @@
 #include <string>
 #include <jwt-cpp/jwt.h>
 #include <openssl/rand.h>
+#include <Poco/String.h>
 
 namespace UTILS {
+
+        // Helper: Convert XML escape sequences to actual newlines
+        inline std::string process_pem_key(const std::string& raw_key) {
+            std::string result = raw_key;
+            // Replace literal \n strings with actual newlines
+            size_t pos = 0;
+            while ((pos = result.find("\\n", pos)) != std::string::npos) {
+                result.replace(pos, 2, "\n");
+                pos += 1;
+            }
+            return Poco::trim(result);
+        }
 
         std::string create_jwt(
             const std::string& api_key,
@@ -32,6 +45,9 @@ namespace UTILS {
 
             std::string nonce = oss.str();
 
+            // Process PEM key to handle XML escape sequences
+            std::string processed_key = process_pem_key(ec_private_key_pem);
+
             auto token = jwt::create()
                 .set_issuer("coinbase-cloud")          // ✅ REQUIRED
                 .set_subject(api_key)                  // org/.../apiKeys/...
@@ -41,7 +57,7 @@ namespace UTILS {
                 .set_header_claim("nonce", jwt::claim(nonce))
                 .sign(jwt::algorithm::es256(
                     "",                                // public key not needed
-                    ec_private_key_pem,                // EC private key
+                    processed_key,                     // EC private key (with actual newlines)
                     "", ""
                 ));
 
