@@ -9,8 +9,6 @@ namespace CORE {
 namespace COINBASE {
 const char *const SCHEMA = "Coinbase";
 // Message types
-const char *const MSG_TYPE_SNAPSHOT = "snapshot";
-const char *const MSG_TYPE_L2UPDATE = "l2update";
 const char *const MSG_TYPE_L2DATA = "l2_data";  // New Advanced Trade API
 const char *const MSG_TYPE_HEARTBEAT = "heartbeat";
 const char *const MSG_TYPE_SUBSCRIPTIONS = "subscriptions";
