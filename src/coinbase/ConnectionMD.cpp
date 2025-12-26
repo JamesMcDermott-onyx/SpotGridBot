@@ -29,10 +29,7 @@ namespace CORE {
 
             GetMessageProcessor().Register([](const std::shared_ptr<CRYPTO::JSONDocument> message)
                                             {
-                                                // Try "channel" field first (new Advanced Trade API)
-                                                auto channel = message->GetValue<std::string>("channel");
-                                                if (!channel.empty())
-                                                    return channel;
+                                                return message->GetValue<std::string>("channel");
                                             });
 
             GetMessageProcessor().Register(MSG_TYPE_HEARTBEAT, [this](const std::shared_ptr<CRYPTO::JSONDocument> jd) {
