@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Config.h"
-#include "ConnectionBase.h"
+#include "ConnectionBaseMD.h"
 
 #include "coinbase/Messages.h"
 
@@ -13,7 +13,7 @@ const char *const MSG_TYPE_L2DATA = "l2_data";  // New Advanced Trade API
 const char *const MSG_TYPE_HEARTBEAT = "heartbeat";
 const char *const MSG_TYPE_SUBSCRIPTIONS = "subscriptions";
 
-class ConnectionMD : public CORE::CRYPTO::ConnectionBase
+class ConnectionMD : public CORE::CRYPTO::ConnectionBaseMD
 {
 public:
 	ConnectionMD(const CRYPTO::Settings &settings, const std::string &loggingPropsPath, const ConnectionManager& connectionManager);
