@@ -1,38 +1,16 @@
 <Configuration>
 
     <GridConfig
-        instrument="BTC/USDT"
-        base_price="30000.0"
-        levels_below="4"
-        levels_above="4"
+        instrument="BTC/USD"
+        base_price="95000.0"
+        levels_below="2"
+        levels_above="2"
         step_percent="0.005"
         percent_order_qty="0.001"
         max_position="2.0"
     />
 
     <SessionConfig>
-<!--        <Session name="BINANCEMD"-->
-<!--                     num_id="1"-->
-<!--                     host="stream.binance.com"-->
-<!--                     port="9443"-->
-<!--                     protocol="ws"-->
-<!--                     snapshot_http="https://api.binance.com/api/v3/depth?symbol=INSTRUMENT&amp;limit=10"-->
-<!--                     depth="0"-->
-<!--                     api_key="KWBUPUMW7F7JAP1SijCl2pmoce0fvKv5OZsSU11nsPSf5hot2oPDadfw6dRxZGEg"-->
-<!--                     secret_key="8iWk7y5yuvUxOKwKa8EbYXffgzkmqios34FHzRFgHCaAKyfa737IMois5e2FZgnn"-->
-<!--                     schema="Binance:MD"-->
-<!--        />-->
-
-<!--        <Session name="BINANCE_TT_01"-->
-<!--                 num_id="2"-->
-<!--                 protocol="rest"-->
-<!--                 orders_http="https://testnet.binance.vision/api/v3/order"-->
-<!--                 api_key="OT1K4NO9vwLG4wK9SNeM58hK8GRmEcFS3B7ndJxSDndmoEXnX5H2srazykMF8tG6"-->
-<!--                 secret_key="KpiPB5ahHOsLg5cRhjg6Sl1mUahK41CywkDEPPTDf7eqDZnIFMJkGH7RHSSq4WZw"-->
-<!--                 recv_window="5000"-->
-<!--                 order_monitoring_interval="5000"-->
-<!--        />-->
-
         <Session name="COINBASEMD"
                      num_id="3"
                      host="advanced-trade-ws.coinbase.com"
@@ -55,6 +33,28 @@
                 passphrase=""
                 schema="Coinbase:ORD"
         />
+
+<!--        <Session name="BINANCEMD"-->
+<!--                     num_id="1"-->
+<!--                     host="stream.binance.com"-->
+<!--                     port="9443"-->
+<!--                     protocol="ws"-->
+<!--                     snapshot_http="https://api.binance.com/api/v3/depth?symbol=INSTRUMENT&amp;limit=10"-->
+<!--                     depth="0"-->
+<!--                     api_key="KWBUPUMW7F7JAP1SijCl2pmoce0fvKv5OZsSU11nsPSf5hot2oPDadfw6dRxZGEg"-->
+<!--                     secret_key="8iWk7y5yuvUxOKwKa8EbYXffgzkmqios34FHzRFgHCaAKyfa737IMois5e2FZgnn"-->
+<!--                     schema="Binance:MD"-->
+<!--        />-->
+
+<!--        <Session name="BINANCE_TT_01"-->
+<!--                 num_id="2"-->
+<!--                 protocol="rest"-->
+<!--                 orders_http="https://testnet.binance.vision/api/v3/order"-->
+<!--                 api_key="OT1K4NO9vwLG4wK9SNeM58hK8GRmEcFS3B7ndJxSDndmoEXnX5H2srazykMF8tG6"-->
+<!--                 secret_key="KpiPB5ahHOsLg5cRhjg6Sl1mUahK41CywkDEPPTDf7eqDZnIFMJkGH7RHSSq4WZw"-->
+<!--                 recv_window="5000"-->
+<!--                 order_monitoring_interval="5000"-->
+<!--        />-->
 
         <!-- <Session name="COINBASEORD"  -->
         <!--       num_id="4"  -->
