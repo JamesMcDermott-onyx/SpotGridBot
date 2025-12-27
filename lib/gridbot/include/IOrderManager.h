@@ -37,7 +37,19 @@ namespace CORE {
 
     virtual std::string PlaceLimitOrder(const UTILS::CurrencyPair cp, UTILS::Side side, double p, double q)=0;
     virtual bool CancelOrder(const UTILS::CurrencyPair cp, const std::string &orderId)=0;
+    
+    // REST-based: Query the exchange for order status (use for REST connections)
     virtual std::optional<Order> GetOrder(const UTILS::CurrencyPair cp, const std::string &orderId)=0;
+    
+    // WebSocket-based: Get locally cached order status (use for WebSocket connections with push updates)
+    virtual std::optional<Order> GetOrderLocal(const std::string &orderId)=0;
+    
+    // Update order status from WebSocket push notifications
+    virtual void UpdateOrder(const std::string &orderId, OrderStatus status, double filled)=0;
+    
+    // Sync order from external source (e.g., startup snapshot) - creates or updates order in cache
+    virtual void SyncOrder(const std::string &orderId, UTILS::Side side, double price, double quantity, OrderStatus status, double filled)=0;
+    
     virtual double GetBalance(const UTILS::Currency& currency)=0;
     virtual void SetBalance(const UTILS::Currency &currency, double balance)=0;
     virtual void PrintBalances(const UTILS::CurrencyPair cp)=0;

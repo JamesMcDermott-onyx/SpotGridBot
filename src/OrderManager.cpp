@@ -71,6 +71,61 @@ namespace CORE {
         return {};
     }
 
+    std::optional<Order> OrderManager::GetOrderLocal(const std::string &orderId)
+    {
+        std::lock_guard<std::mutex> g(m_mutex);
+
+        if (!m_orders.count(orderId))
+            return {};
+
+        return m_orders[orderId];
+    }
+
+    void OrderManager::UpdateOrder(const std::string &orderId, OrderStatus status, double filled)
+    {
+        std::lock_guard<std::mutex> g(m_mutex);
+
+        if (!m_orders.count(orderId))
+        {
+            poco_warning_f1(logger(), "UpdateOrder called for unknown order: %s", orderId);
+            return;
+        }
+
+        m_orders[orderId].status = status;
+        m_orders[orderId].filled = filled;
+
+        poco_information_f3(logger(), "Order updated: %s, status=%d, filled=%f", 
+            orderId, static_cast<int>(status), filled);
+    }
+
+    void OrderManager::SyncOrder(const std::string &orderId, UTILS::Side side, double price, double quantity, OrderStatus status, double filled)
+    {
+        std::lock_guard<std::mutex> g(m_mutex);
+
+        // Check if order already exists in cache
+        if (m_orders.count(orderId))
+        {
+            // Update existing order
+            m_orders[orderId].status = status;
+            m_orders[orderId].filled = filled;
+            poco_information_f1(logger(), "Order synced (updated): %s", orderId);
+        }
+        else
+        {
+            // Add new order to cache
+            Order order;
+            order.id = orderId;
+            order.side = side;
+            order.price = price;
+            order.quantity = quantity;
+            order.status = status;
+            order.filled = filled;
+            
+            m_orders[orderId] = order;
+            poco_information_f1(logger(), "Order synced (new): %s", orderId);
+        }
+    }
+
     double OrderManager::GetBalance(const UTILS::Currency &currency)
     {
         std::lock_guard<std::mutex> g(m_mutex);

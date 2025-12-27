@@ -12,6 +12,10 @@
 #include "Utils/ErrorHandler.h"
 
 namespace CORE {
+	class OrderManager;
+}
+
+namespace CORE {
 
 class ConnectionManager final : UTILS::Logging, public UTILS::ErrorHandler
 {
@@ -69,6 +73,14 @@ public:
 	std::shared_ptr<RESTAPI::RestConnectionBase> OrderConnection() {
 		return std::static_pointer_cast<RESTAPI::RestConnectionBase>(m_connections[m_orderConnection]);
 	}
+
+	void SetOrderManager(std::shared_ptr<OrderManager> orderManager) {
+		m_orderManager = orderManager;
+	}
+
+	std::shared_ptr<OrderManager> GetOrderManager() const {
+		return m_orderManager;
+	}
 private:
 	
 	TSettingsCollection m_settingsCollection;
@@ -83,6 +95,7 @@ private:
 	std::map<std::string, std::shared_ptr<CRYPTO::IConnection>> m_connections;
 	std::shared_ptr<BOOK::OrderBook> m_orderBook;
 	std::string m_orderConnection; //Name of order connection
+	std::shared_ptr<OrderManager> m_orderManager; // Reference to OrderManager for WebSocket order updates
 }; // ConnectionManager
 
 } // namespace CORE

@@ -1,6 +1,7 @@
 #include "coinbase/ConnectionORDWS.h"
 #include "coinbase/JWTGenerator.h"
 #include "ConnectionManager.h"
+#include "OrderManager.h"
 #include "Definitions.h"
 #include "Tools.h"
 #include "Utils/Result.h"
@@ -86,7 +87,7 @@ ConnectionORDWS::ConnectionORDWS(const CRYPTO::Settings &settings, const std::st
 			
 			if (event_type == "snapshot")
 			{
-				// Initial snapshot of orders and positions
+				// Initial snapshot of orders and positions - sync to OrderManager
 				poco_information(logger(), "Received user snapshot");
 				
 				if (eventObj->has("orders"))
@@ -94,12 +95,73 @@ ConnectionORDWS::ConnectionORDWS(const CRYPTO::Settings &settings, const std::st
 					auto orders = eventObj->getArray("orders");
 					if (orders && orders->size() > 0)
 					{
-						poco_information_f1(logger(), "Snapshot contains %d active orders", (int)orders->size());
-						// Process existing orders if needed
+						int syncCount = 0;
+						poco_information_f1(logger(), "Snapshot contains %d active orders - syncing to OrderManager", (int)orders->size());
+						
+						// Get OrderManager to sync orders
+						auto orderManager = m_connectionManager.GetOrderManager();
+						if (orderManager)
+						{
+							Poco::Dynamic::Array ordersArray = *orders;
+							for (size_t j = 0; j < orders->size(); j++)
+							{
+								auto orderObj = ordersArray[j].extract<Poco::JSON::Object::Ptr>();
+								if (!orderObj) continue;
+								
+								try
+								{
+									std::string order_id = orderObj->optValue<std::string>("order_id", "");
+									std::string side_str = orderObj->optValue<std::string>("side", "");
+									std::string status = orderObj->optValue<std::string>("status", "");
+									std::string size_str = orderObj->optValue<std::string>("size", "0");
+									std::string price_str = orderObj->optValue<std::string>("price", "0");
+									std::string filled_size_str = orderObj->optValue<std::string>("filled_size", "0");
+									
+									if (order_id.empty()) continue;
+									
+									// Translate side
+									UTILS::Side side = (side_str == "BUY") ? UTILS::Side::BUY : UTILS::Side::SELL;
+									
+									// Translate status
+									CORE::OrderStatus orderStatus;
+									if (status == "OPEN" || status == "PENDING")
+										orderStatus = CORE::OrderStatus::NEW;
+									else if (status == "FILLED" || status == "DONE")
+										orderStatus = CORE::OrderStatus::FILLED;
+									else if (status == "CANCELLED")
+										orderStatus = CORE::OrderStatus::CANCELED;
+									else if (status == "REJECTED" || status == "FAILED")
+										orderStatus = CORE::OrderStatus::REJECTED;
+									else if (status == "PARTIALLY_FILLED")
+										orderStatus = CORE::OrderStatus::PARTIALLY_FILLED;
+									else
+										orderStatus = CORE::OrderStatus::NEW;
+									
+									// Parse numeric values
+									double quantity = std::stod(size_str);
+									double price = std::stod(price_str);
+									double filled = std::stod(filled_size_str);
+									
+									// Sync to OrderManager
+									orderManager->SyncOrder(order_id, side, price, quantity, orderStatus, filled);
+									syncCount++;
+								}
+								catch (std::exception &e)
+								{
+									poco_warning_f1(logger(), "Error syncing order from snapshot: %s", std::string(e.what()));
+								}
+							}
+							
+							poco_information_f1(logger(), "Successfully synced %d orders to OrderManager cache", syncCount);
+						}
+						else
+						{
+							poco_warning(logger(), "OrderManager not available for snapshot sync");
+						}
 					}
 					else
 					{
-						poco_debug(logger(), "Snapshot: no active orders");
+						poco_information(logger(), "Snapshot: no active orders to sync");
 					}
 				}
 			}
@@ -296,12 +358,44 @@ void ConnectionORDWS::OnOrderUpdate(const std::shared_ptr<CRYPTO::JSONDocument> 
 			std::string client_order_id = eventObj->optValue<std::string>("client_order_id", "");
 			std::string status = eventObj->optValue<std::string>("status", "");
 			std::string product_id = eventObj->optValue<std::string>("product_id", "");
+			std::string filled_size_str = eventObj->optValue<std::string>("filled_size", "0");
 
 			poco_information_f3(logger(), "Order update: id=%s, client_id=%s, status=%s",
 				order_id, client_order_id, status);
 
-			// Here you would translate this to ExecutionReportData and publish to system
-			// Similar to how REST ConnectionORD does it
+			// Get OrderManager from ConnectionManager and update order status
+			auto orderManager = m_connectionManager.GetOrderManager();
+			if (orderManager)
+			{
+				// Translate Coinbase status to internal OrderStatus
+				CORE::OrderStatus orderStatus;
+				if (status == "OPEN" || status == "PENDING")
+					orderStatus = CORE::OrderStatus::NEW;
+				else if (status == "FILLED" || status == "DONE")
+					orderStatus = CORE::OrderStatus::FILLED;
+				else if (status == "CANCELLED")
+					orderStatus = CORE::OrderStatus::CANCELED;
+				else if (status == "REJECTED" || status == "FAILED")
+					orderStatus = CORE::OrderStatus::REJECTED;
+				else if (status == "PARTIALLY_FILLED")
+					orderStatus = CORE::OrderStatus::PARTIALLY_FILLED;
+				else
+					orderStatus = CORE::OrderStatus::NEW; // Default
+
+				double filled = 0.0;
+				try {
+					filled = std::stod(filled_size_str);
+				} catch (...) {
+					filled = 0.0;
+				}
+
+				// Push update to OrderManager
+				orderManager->UpdateOrder(order_id, orderStatus, filled);
+			}
+			else
+			{
+				poco_warning(logger(), "OrderManager not available for order updates");
+			}
 		}
 	}
 	catch (std::exception &e)

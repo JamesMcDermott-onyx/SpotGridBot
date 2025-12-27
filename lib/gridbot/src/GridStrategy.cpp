@@ -44,8 +44,10 @@ namespace STRATEGY {
     // Loop over all active orders we’re tracking
     for (auto &orderId : m_activeOrders)
     {
-        // Query the exchange/order manager for the latest status of this order
-        auto maybe = m_orderManager->GetOrder(m_cp, orderId);
+        // Get the locally cached order status (updated by WebSocket push notifications)
+        // Note: With WebSocket connections, order status is pushed to OrderManager automatically,
+        // so we don't need to query the exchange - just read the cached state
+        auto maybe = m_orderManager->GetOrderLocal(orderId);
         if (!maybe) {
             continue; // If no data (order not found), skip
         }

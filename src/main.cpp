@@ -39,6 +39,9 @@ int main(int argc, char** argv)
         Options options(argc, argv);
         auto m_connectionManager = make_shared<ConnectionManager>(options.ConfigPath(), options.LoggingPropsPath(), m_orderBook);
         auto m_orderManager = make_shared<OrderManager>(m_connectionManager);
+        
+        // Set OrderManager reference in ConnectionManager so WebSocket connections can push order updates
+        m_connectionManager->SetOrderManager(m_orderManager);
 
         STRATEGY::GridStrategy strat(m_orderManager, options.ConfigPath());
         //strat.Start();

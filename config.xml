@@ -55,10 +55,6 @@
                 passphrase=""
                 schema="Coinbase:ORD"
         />
-        
-
-
-
 
         <!-- <Session name="COINBASEORD"  -->
         <!--       num_id="4"  -->
@@ -70,9 +66,6 @@
         <!--       passphrase="thsv5x4pwhmo"  -->
         <!--       schema="Coinbase:ORD"  -->
         <!-- /> -->
-
-
-
 
 <!--        <Session name="OKX_TR_01"-->
 <!--                 num_id="999206"-->
@@ -99,7 +92,6 @@
 <!--            <Parameter name="orders_limit_period_in_seconds" value="2"/>-->
 <!--            <Parameter name="orders_limit_max" value="60"/>-->
 <!--        </Session>-->
-
 
     </SessionConfig>
 
