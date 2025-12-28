@@ -290,10 +290,23 @@ std::string ConnectionORDWS::SendOrder(const UTILS::CurrencyPair &instrument, co
 	std::string signed_payload = CreateSignedOrderMessage(payload);
 	Send(signed_payload);
 
-	poco_information_f4(logger(), "Sent order: %s %s @%f qty=%f", 
-		clOrdId, side == UTILS::Side::BUY ? "BUY" : "SELL", price, quantity);
+	std::string sideStr = (side == UTILS::Side::BUY) ? "BUY" : "SELL";
+	std::string logMsg = "Sent order: " + clOrdId + " " + sideStr + 
+	                     " @" + std::to_string(price) + " qty=" + std::to_string(quantity);
+	poco_information(logger(), logMsg);
 
-	return clOrdId;
+	// Return JSON response format matching REST API for OrderManager compatibility
+	nlohmann::json response = {
+		{"success", "true"},
+		{"success_response", {
+			{"order_id", clOrdId},
+			{"client_order_id", clOrdId},
+			{"product_id", TranslateSymbolToExchangeSpecific(instrument)},
+			{"side", side == UTILS::Side::BUY ? "BUY" : "SELL"}
+		}}
+	};
+	
+	return response.dump();
 }
 
 //------------------------------------------------------------------------------

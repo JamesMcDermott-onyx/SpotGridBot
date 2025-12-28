@@ -2,13 +2,34 @@
 
 #include "ConnectionManager.h"
 #include "Utils/CurrencyPair.h"
+#include "RestConnectionBase.h"
+#include "coinbase/ConnectionORDWS.h"
 
 namespace CORE {
     std::string OrderManager::PlaceLimitOrder(const UTILS::CurrencyPair cp, UTILS::Side side, double price, double quantity)
     {
         std::lock_guard<std::mutex> g(m_mutex);
 
-        CRYPTO::JSONDocument response(m_connectionManager->OrderConnection()->SendOrder(cp, side, RESTAPI::EOrderType::Limit, UTILS::TimeInForce::GTC, price, quantity));
+        std::string responseStr;
+        auto connection = m_connectionManager->OrderConnection();
+        
+        // Try WebSocket connection first
+        if (auto wsConn = std::dynamic_pointer_cast<COINBASE::ConnectionORDWS>(connection))
+        {
+            responseStr = wsConn->SendOrder(cp, side, RESTAPI::EOrderType::Limit, UTILS::TimeInForce::GTC, price, quantity);
+        }
+        // Fallback to REST connection
+        else if (auto restConn = std::dynamic_pointer_cast<RESTAPI::RestConnectionBase>(connection))
+        {
+            responseStr = restConn->SendOrder(cp, side, RESTAPI::EOrderType::Limit, UTILS::TimeInForce::GTC, price, quantity);
+        }
+        else
+        {
+            poco_error(logger(), "Unknown order connection type");
+            return "";
+        }
+
+        CRYPTO::JSONDocument response(responseStr);
 
         if (response.GetValue<std::string>("success").compare("true")==0)
         {
@@ -45,7 +66,19 @@ namespace CORE {
         order.status = OrderStatus::CANCELED;
         m_orders.erase(orderId);
 
-        m_connectionManager->OrderConnection()->CancelOrder(cp, orderId);
+        auto connection = m_connectionManager->OrderConnection();
+        
+        // Try WebSocket connection first
+        if (auto wsConn = std::dynamic_pointer_cast<COINBASE::ConnectionORDWS>(connection))
+        {
+            wsConn->CancelOrder(cp, orderId);
+        }
+        // Fallback to REST connection
+        else if (auto restConn = std::dynamic_pointer_cast<RESTAPI::RestConnectionBase>(connection))
+        {
+            restConn->CancelOrder(cp, orderId);
+        }
+        
         poco_information_f1(logger(), "Canceled order %s", orderId);
 
         return true;
@@ -58,13 +91,25 @@ namespace CORE {
         if (!m_orders.count(orderId))
             return {};
 
-        CRYPTO::JSONDocument response(m_connectionManager->OrderConnection()->QueryOrder(cp, orderId));
-
-        if (response.GetValue<std::string>("success").compare("true")==0)
+        auto connection = m_connectionManager->OrderConnection();
+        
+        // For REST connections, query the exchange
+        if (auto restConn = std::dynamic_pointer_cast<RESTAPI::RestConnectionBase>(connection))
         {
-            m_orders[orderId].status = order_status(response.GetValue<std::string>("status"));
-            m_orders[orderId].filled = response.GetValue<double>("filled_size");
+            CRYPTO::JSONDocument response(restConn->QueryOrder(cp, orderId));
 
+            if (response.GetValue<std::string>("success").compare("true")==0)
+            {
+                m_orders[orderId].status = order_status(response.GetValue<std::string>("status"));
+                m_orders[orderId].filled = response.GetValue<double>("filled_size");
+
+                return m_orders[orderId];
+            }
+        }
+        // For WebSocket connections, use local cache (WebSocket pushes updates automatically)
+        else if (auto wsConn = std::dynamic_pointer_cast<COINBASE::ConnectionORDWS>(connection))
+        {
+            poco_warning(logger(), "GetOrder() called with WebSocket connection - use GetOrderLocal() instead for better performance");
             return m_orders[orderId];
         }
 

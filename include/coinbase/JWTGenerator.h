@@ -24,9 +24,11 @@ namespace UTILS {
             return Poco::trim(result);
         }
 
-        std::string create_jwt(
+        inline std::string create_jwt(
             const std::string& api_key,
-            const std::string& ec_private_key_pem
+            const std::string& ec_private_key_pem,
+            const std::string& request_method = "",
+            const std::string& request_host_path = ""
         ) {
             using clock = std::chrono::system_clock;
 
@@ -48,14 +50,31 @@ namespace UTILS {
             // Process PEM key to handle XML escape sequences
             std::string processed_key = process_pem_key(ec_private_key_pem);
 
-            auto token = jwt::create()
+            auto builder = jwt::create()
                 .set_issuer("coinbase-cloud")          // ✅ REQUIRED
                 .set_subject(api_key)                  // org/.../apiKeys/...
                 .set_not_before(now)                   // numeric nbf
                 .set_expires_at(exp)                   // numeric exp
                 .set_header_claim("kid", jwt::claim(api_key))
-                .set_header_claim("nonce", jwt::claim(nonce))
-                .sign(jwt::algorithm::es256(
+                .set_header_claim("nonce", jwt::claim(nonce));
+
+            // For REST API, add URI claim
+            // Format can be either "METHOD host/path" or just passed as full URI string
+            if (!request_host_path.empty())
+            {
+                std::string uri;
+                if (!request_method.empty())
+                {
+                    uri = request_method + " " + request_host_path;
+                }
+                else
+                {
+                    uri = request_host_path;  // Already formatted
+                }
+                builder.set_payload_claim("uri", jwt::claim(uri));
+            }
+
+            auto token = builder.sign(jwt::algorithm::es256(
                     "",                                // public key not needed
                     processed_key,                     // EC private key (with actual newlines)
                     "", ""

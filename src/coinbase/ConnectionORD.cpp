@@ -6,6 +6,7 @@
 #include "Utils/Result.h"
 #include "Poco/URI.h"
 #include "coinbase/ConnectionORD.h"
+#include "coinbase/JWTGenerator.h"
 
 #include "Crypto.h"
 #include "libbase64.hpp"
@@ -100,21 +101,26 @@ void ConnectionORD::OnMsgError(const int errCode, const std::string &errMsg, con
 	poco_error_f2(logger(), "received 'error': code='%s', msg='%s'", std::to_string(errCode), errMsg);
 }
 
-//Create a Market Data authentication signature
+//Create JWT authentication token for Coinbase Advanced Trade API
 const AuthHeader ConnectionORD::GetAuthHeader(const std::string& requestPath, const std::string& accessMethod)
 {
-	auto cb_access_timestamp = std::to_string(UTILS::CurrentTimestamp() / 1000000000); //as seconds
-	auto cb_access_method{accessMethod};
-	auto cb_access_request_path{requestPath};
+	// Generate JWT token for Coinbase Advanced Trade
+	// For REST API, we need to include the HTTP method and full path in the JWT
+	// The URI should match: "GET api.coinbase.com/api/v3/brokerage/orders"
+	std::string fullPath = "/api/v3/brokerage/" + requestPath;
+	std::string host = "api.coinbase.com";
+	std::string uri = accessMethod + " " + host + fullPath;
+	
+	std::string jwt_token = UTILS::create_jwt(
+		m_settings.m_apikey,
+		m_settings.m_secretkey,
+		"",     // Empty method - we're passing full URI
+		uri     // Full URI in format "METHOD host/path"
+	);
 
-	//Now build the signature...
-	auto msg = cb_access_timestamp + cb_access_method + cb_access_request_path;
-
-	const auto decodedKey = libbase64::decode<std::string, char, unsigned char, true>(m_settings.m_secretkey);
-	const auto digest = HMAC(EVP_sha256(), decodedKey.c_str(), decodedKey.size(), (unsigned char *) msg.c_str(), msg.size(), NULL, NULL);
-	const auto cb_access_sign = libbase64::encode<std::string, char, unsigned char, true>( digest, SHA256_DIGEST_LENGTH);
-
-	return AuthHeader(cb_access_sign, m_settings.m_apikey, m_settings.m_passphrase, cb_access_timestamp);
+	// Return JWT token in the sign field (key will be "Authorization")
+	// timestamp and passphrase not needed for JWT auth
+	return AuthHeader(jwt_token, m_settings.m_apikey, "", "");
 }
 
 //------------------------------------------------------------------------------
@@ -128,10 +134,7 @@ std::string ConnectionORD::GetOrders()
 	}, [&](Poco::Net::HTTPRequest &request)
 						{
 							request.add("content-type", "application/json");
-							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
-							request.add("CB-ACCESS-PASSPHRASE",  std::get<CB_ACCESS_PASSPHRASE>(header));
-							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
-							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
+							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
 						});
 }
 
@@ -163,10 +166,7 @@ std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, cons
 	[&](Poco::Net::HTTPRequest &request)
 						{
 							request.add("content-type", "application/json");
-							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
-							request.add("CB-ACCESS-PASSPHRASE",  std::get<CB_ACCESS_PASSPHRASE>(header));
-							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
-							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
+							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
 						},
 	[&](const Poco::Net::HTTPResponse &response)
 	{
@@ -196,10 +196,7 @@ std::string ConnectionORD::CancelOrder(const UTILS::CurrencyPair &instrument, co
 	[&](Poco::Net::HTTPRequest &request)
 						{
 							request.add("content-type", "application/json");
-							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
-							request.add("CB-ACCESS-PASSPHRASE",  std::get<CB_ACCESS_PASSPHRASE>(header));
-							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
-							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
+							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
 						},
 	[&](const Poco::Net::HTTPResponse &response)
 	{
@@ -228,10 +225,7 @@ std::string ConnectionORD::QueryOrder(const UTILS::CurrencyPair &instrument, con
 	[&](Poco::Net::HTTPRequest &request)
 						{
 							request.add("content-type", "application/json");
-							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
-							request.add("CB-ACCESS-PASSPHRASE",  std::get<CB_ACCESS_PASSPHRASE>(header));
-							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
-							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
+							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
 						},
 	[&](const Poco::Net::HTTPResponse &response)
 	{

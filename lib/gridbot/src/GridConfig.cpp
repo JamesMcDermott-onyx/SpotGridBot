@@ -34,12 +34,30 @@ bool GridConfig::LoadConfig(const UTILS::XmlDocPtr &pDoc)
 	 		poco_information_f1(logger(), "Reading %s attributes from XML", TAG_GRID_CONFIG);
 
 	 		m_instrument = UTILS::GetXmlAttribute(baseNode, ATTR_INSTRUMENT, "");
-	 		m_basePrice = std::stod(UTILS::GetXmlAttribute(baseNode, ATTR_BASE_PRICE, ""));
-	 		m_levelsBelow = std::stoi(UTILS::GetXmlAttribute(baseNode, ATTR_LEVELS_BELOW, ""));
-	 		m_levelsAbove = std::stoi(UTILS::GetXmlAttribute(baseNode, ATTR_LEVELS_ABOVE, ""));
-	 		m_stepPercent = std::stod(UTILS::GetXmlAttribute(baseNode, ATTR_STEP_PERCENT, ""));
-	 		m_percentOrderQty = std::stod(UTILS::GetXmlAttribute(baseNode, ATTR_PERCENT_ORDER_QTY, ""));
-	 		m_maxPosition = std::stod(UTILS::GetXmlAttribute(baseNode, ATTR_MAX_POSITION, ""));
+	 		
+	 		std::string basePriceStr = UTILS::GetXmlAttribute(baseNode, ATTR_BASE_PRICE, "0.0");
+	 		std::string levelsBelowStr = UTILS::GetXmlAttribute(baseNode, ATTR_LEVELS_BELOW, "0");
+	 		std::string levelsAboveStr = UTILS::GetXmlAttribute(baseNode, ATTR_LEVELS_ABOVE, "0");
+	 		std::string stepPercentStr = UTILS::GetXmlAttribute(baseNode, ATTR_STEP_PERCENT, "0.0");
+	 		std::string percentOrderQtyStr = UTILS::GetXmlAttribute(baseNode, ATTR_PERCENT_ORDER_QTY, "0.0");
+	 		std::string maxPositionStr = UTILS::GetXmlAttribute(baseNode, ATTR_MAX_POSITION, "0.0");
+	 		
+	 		poco_information_f1(logger(), "instrument: %s", m_instrument);
+	 		poco_information_f1(logger(), "base_price string: %s", basePriceStr);
+	 		
+	 		m_basePrice = std::stod(basePriceStr);
+	 		m_levelsBelow = std::stoi(levelsBelowStr);
+	 		m_levelsAbove = std::stoi(levelsAboveStr);
+	 		m_stepPercent = std::stod(stepPercentStr);
+	 		m_percentOrderQty = std::stod(percentOrderQtyStr);
+	 		m_maxPosition = std::stod(maxPositionStr);
+	 		
+	 		std::string configSummary = "Loaded config: base=" + std::to_string(m_basePrice) + 
+	 		                           ", levels=" + std::to_string(m_levelsBelow) + "/" + std::to_string(m_levelsAbove) + 
+	 		                           ", step=" + std::to_string(m_stepPercent) + 
+	 		                           ", qty=" + std::to_string(m_percentOrderQty) + 
+	 		                           ", max=" + std::to_string(m_maxPosition);
+	 		poco_information(logger(), configSummary);
 	 	}
 	 	else
 	 	{

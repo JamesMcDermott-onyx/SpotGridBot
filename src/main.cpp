@@ -44,11 +44,13 @@ int main(int argc, char** argv)
         m_connectionManager->SetOrderManager(m_orderManager);
 
         STRATEGY::GridStrategy strat(m_orderManager, options.ConfigPath());
-        strat.Start();
 
         m_orderBook->Initialise([&strat]() { strat.CheckFilledOrders(); });
 
         m_connectionManager->Connect(); //connect market data and populate orderbook.
+        
+        // Start strategy after connections are established
+        strat.Start();
 
         poco_information(logger, "SpotGridBot has started - press <enter> to exit ..");
         std::cin.get();

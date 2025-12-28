@@ -70,8 +70,9 @@ public:
 									});
 	}
 
-	std::shared_ptr<RESTAPI::RestConnectionBase> OrderConnection() {
-		return std::static_pointer_cast<RESTAPI::RestConnectionBase>(m_connections[m_orderConnection]);
+	// Returns the order connection (works for both REST and WebSocket)
+	std::shared_ptr<CRYPTO::IConnection> OrderConnection() {
+		return m_connections[m_orderConnection];
 	}
 
 	void SetOrderManager(std::shared_ptr<OrderManager> orderManager) {
