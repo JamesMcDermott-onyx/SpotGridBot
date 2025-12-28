@@ -1,7 +1,7 @@
 <Configuration>
 
     <GridConfig
-        instrument="BTC/USD"
+        instrument="BTC/USDC"
         base_price="95000.0"
         levels_below="2"
         levels_above="2"
@@ -20,7 +20,7 @@
                      port="443"
                      channels="level2"
                      schema="Coinbase:MD"
-                     instruments="BTC/USD"
+                     instruments="BTC/USDC"
         />
 
         <Session name="COINBASEORD"
