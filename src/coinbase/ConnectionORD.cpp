@@ -7,6 +7,7 @@
 #include "Poco/URI.h"
 #include "coinbase/ConnectionORD.h"
 #include "coinbase/JWTGenerator.h"
+#include <jwt-cpp/jwt.h>
 
 #include "Crypto.h"
 #include "libbase64.hpp"
@@ -111,12 +112,35 @@ const AuthHeader ConnectionORD::GetAuthHeader(const std::string& requestPath, co
 	std::string host = "api.coinbase.com";
 	std::string uri = accessMethod + " " + host + fullPath;
 	
+	poco_information_f3(logger(), "Generating JWT for REST request: method=%s, path=%s, uri=%s", 
+		accessMethod, fullPath, uri);
+	
 	std::string jwt_token = UTILS::create_jwt(
 		m_settings.m_apikey,
 		m_settings.m_secretkey,
 		"",     // Empty method - we're passing full URI
 		uri     // Full URI in format "METHOD host/path"
 	);
+
+	// Log the JWT token (first 50 and last 20 chars for debugging)
+	std::string jwt_preview = jwt_token.length() > 70 ? 
+		jwt_token.substr(0, 50) + "..." + jwt_token.substr(jwt_token.length() - 20) : jwt_token;
+	poco_information_f1(logger(), "Generated JWT token: %s", jwt_preview);
+	
+	// Try to decode and log JWT claims for debugging
+	try {
+		auto decoded = jwt::decode(jwt_token);
+		poco_information(logger(), "JWT Claims:");
+		poco_information_f1(logger(), "  iss: %s", decoded.get_issuer());
+		poco_information_f1(logger(), "  sub: %s", decoded.get_subject());
+		if (decoded.has_payload_claim("uri")) {
+			poco_information_f1(logger(), "  uri: %s", decoded.get_payload_claim("uri").as_string());
+		}
+		poco_information_f1(logger(), "  exp: %?d", std::to_string(decoded.get_expires_at().time_since_epoch().count()));
+		poco_information_f1(logger(), "  kid (header): %s", decoded.get_header_claim("kid").as_string());
+	} catch (const std::exception& e) {
+		poco_warning_f1(logger(), "Failed to decode JWT for logging: %s", std::string(e.what()));
+	}
 
 	// Return JWT token in the sign field (key will be "Authorization")
 	// timestamp and passphrase not needed for JWT auth
@@ -152,12 +176,11 @@ std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, cons
 	body+=timeInForce==UTILS::TimeInForce::GTC ? "\"limit_limit_gtc\":{" : "\"limit_limit_ioc\":{";
 	body+="\"limit_price\":";
 	body+="\""+std::to_string(price)+"\"";
-	body+=",\"quote_size\":";
-	body+="\""+std::to_string(quantity)+"\"";
 	body+=",\"base_size\":";
-	body+="\""+std::to_string(double(quantity/price))+"\"";
+	body+="\""+std::to_string(quantity)+"\"";
 	body+=",\"post_only\":false";
 	body+="}}}";
+
 
 	std::string msg = DoWebRequest(m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_POST, [&](std::string &path)
 	{
@@ -174,10 +197,12 @@ std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, cons
 	},
 	[&](std::ostream &ostr) {
 		ostr << body;
+		poco_information_f1(logger(), "SendOrder JSON: %s", body);
 		m_logger.Protocol().Outging(body);
 	});
 
 	m_logger.Protocol().Incoming(msg);
+	poco_information_f1(logger(), "SendOrder response: %s", msg);
 	return msg;
  }
 
