@@ -5,6 +5,8 @@
 #include "Tools.h"
 #include "Utils/Result.h"
 #include "Poco/URI.h"
+#include "Poco/UUID.h"
+#include "Poco/UUIDGenerator.h"
 #include "coinbase/ConnectionORD.h"
 #include "coinbase/JWTGenerator.h"
 #include <jwt-cpp/jwt.h>
@@ -183,7 +185,13 @@ std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, cons
 {
 	const std::string requestPath("orders");
  	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "POST");
-	std::string body("{ \"client_order_id\": \"0000-00000-000000\", \"product_id\":");
+	
+	// Generate unique client order ID
+	Poco::UUIDGenerator& generator = Poco::UUIDGenerator::defaultGenerator();
+	Poco::UUID uuid = generator.createRandom();
+	std::string uniqueClientOrderId = uuid.toString();
+	
+	std::string body("{ \"client_order_id\": \"" + uniqueClientOrderId + "\", \"product_id\":");
 	body+="\""+TranslateSymbolToExchangeSpecific(instrument)+"\"";
 	body+=",\"side\":";
 	body+=side==UTILS::Side::BUY?"\"BUY\"":"\"SELL\"";
