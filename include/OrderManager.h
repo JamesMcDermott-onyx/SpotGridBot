@@ -35,7 +35,9 @@ namespace CORE {
     
     double GetBalance(const UTILS::Currency &currency);
     void SetBalance(const UTILS::Currency &currency, double balance);
+    void InitializeBalances();
     void PrintBalances(UTILS::CurrencyPair cp);
+    void PrintAllBalances();
 
     std::shared_ptr<CORE::ConnectionManager> GetConnectionManager() { return m_connectionManager; }
 
@@ -43,7 +45,7 @@ namespace CORE {
     std::mutex m_mutex;
     std::unordered_map<std::string,Order> m_orders;
 
-    std::vector<double> m_balance; //the balance off the base and quote currencies
+    std::unordered_map<UTILS::Currency, double> m_balance; //the balance of currencies
 
     std::shared_ptr<CORE::ConnectionManager> m_connectionManager;
   };

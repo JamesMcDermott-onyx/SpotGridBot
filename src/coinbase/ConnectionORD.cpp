@@ -128,19 +128,19 @@ const AuthHeader ConnectionORD::GetAuthHeader(const std::string& requestPath, co
 	poco_information_f1(logger(), "Generated JWT token: %s", jwt_preview);
 	
 	// Try to decode and log JWT claims for debugging
-	try {
-		auto decoded = jwt::decode(jwt_token);
-		poco_information(logger(), "JWT Claims:");
-		poco_information_f1(logger(), "  iss: %s", decoded.get_issuer());
-		poco_information_f1(logger(), "  sub: %s", decoded.get_subject());
-		if (decoded.has_payload_claim("uri")) {
-			poco_information_f1(logger(), "  uri: %s", decoded.get_payload_claim("uri").as_string());
-		}
-		poco_information_f1(logger(), "  exp: %?d", std::to_string(decoded.get_expires_at().time_since_epoch().count()));
-		poco_information_f1(logger(), "  kid (header): %s", decoded.get_header_claim("kid").as_string());
-	} catch (const std::exception& e) {
-		poco_warning_f1(logger(), "Failed to decode JWT for logging: %s", std::string(e.what()));
-	}
+	// try {
+	// 	auto decoded = jwt::decode(jwt_token);
+	// 	poco_information(logger(), "JWT Claims:");
+	// 	poco_information_f1(logger(), "  iss: %s", decoded.get_issuer());
+	// 	poco_information_f1(logger(), "  sub: %s", decoded.get_subject());
+	// 	if (decoded.has_payload_claim("uri")) {
+	// 		poco_information_f1(logger(), "  uri: %s", decoded.get_payload_claim("uri").as_string());
+	// 	}
+	// 	poco_information_f1(logger(), "  exp: %?d", std::to_string(decoded.get_expires_at().time_since_epoch().count()));
+	// 	poco_information_f1(logger(), "  kid (header): %s", decoded.get_header_claim("kid").as_string());
+	// } catch (const std::exception& e) {
+	// 	poco_warning_f1(logger(), "Failed to decode JWT for logging: %s", std::string(e.what()));
+	// }
 
 	// Return JWT token in the sign field (key will be "Authorization")
 	// timestamp and passphrase not needed for JWT auth
@@ -151,6 +151,21 @@ const AuthHeader ConnectionORD::GetAuthHeader(const std::string& requestPath, co
 std::string ConnectionORD::GetOrders()
 {
 	const std::string requestPath("orders/historical/batch");
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "GET");
+
+	return DoWebRequest(m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_GET, [&](std::string &path)
+	{
+	}, [&](Poco::Net::HTTPRequest &request)
+						{
+							request.add("content-type", "application/json");
+							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
+						});
+}
+
+//------------------------------------------------------------------------------
+std::string ConnectionORD::GetAccounts()
+{
+	const std::string requestPath("accounts");
 	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "GET");
 
 	return DoWebRequest(m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_GET, [&](std::string &path)

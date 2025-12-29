@@ -3,6 +3,7 @@
 #include "ConnectionManager.h"
 #include "Utils/CurrencyPair.h"
 #include "RestConnectionBase.h"
+#include "coinbase/ConnectionORD.h"
 #include "coinbase/ConnectionORDWS.h"
 
 namespace CORE {
@@ -12,20 +13,16 @@ namespace CORE {
 
         std::string responseStr;
         auto connection = m_connectionManager->OrderConnection();
-        
-        // Try WebSocket connection first
-        if (auto wsConn = std::dynamic_pointer_cast<COINBASE::ConnectionORDWS>(connection))
-        {
-            responseStr = wsConn->SendOrder(cp, side, RESTAPI::EOrderType::Limit, UTILS::TimeInForce::GTC, price, quantity);
-        }
+                
         // Fallback to REST connection
-        else if (auto restConn = std::dynamic_pointer_cast<RESTAPI::RestConnectionBase>(connection))
+        if (auto restConn = std::dynamic_pointer_cast<RESTAPI::RestConnectionBase>(connection))
         {
+            poco_debug(logger(), "Using REST connection for order");
             responseStr = restConn->SendOrder(cp, side, RESTAPI::EOrderType::Limit, UTILS::TimeInForce::GTC, price, quantity);
         }
         else
         {
-            poco_error(logger(), "Unknown order connection type");
+            poco_error_f1(logger(), "Unknown order connection type: %s", std::string(typeid(*connection).name()));
             return "";
         }
 
@@ -183,9 +180,138 @@ namespace CORE {
         m_balance[currency]=balance;
     }
 
+    void OrderManager::InitializeBalances()
+    {
+        auto connection = m_connectionManager->OrderConnection();
+        
+        if (!connection) {
+            poco_error(logger(), "Order connection is null - cannot initialize balances!");
+            return;
+        }
+        
+        // For REST connections, query account balances
+        if (auto restConn = std::dynamic_pointer_cast<RESTAPI::RestConnectionBase>(connection))
+        {
+            // Try to cast to Coinbase-specific connection for GetAccounts
+            if (auto coinbaseConn = std::dynamic_pointer_cast<COINBASE::ConnectionORD>(restConn))
+            {
+                try
+                {
+                    std::string accountsJson = coinbaseConn->GetAccounts();
+                    //poco_information_f1(logger(), "Raw GetAccounts response: %s", accountsJson);
+                    
+                    CRYPTO::JSONDocument response(accountsJson);
+                    
+                    if (response.Has("accounts"))
+                    {
+                        auto accounts = response.GetArray("accounts");
+                        if (accounts && accounts->size() > 0)
+                        {
+                            poco_information_f1(logger(), "Found %d accounts in response", (int)accounts->size());
+                            
+                            for (size_t i = 0; i < accounts->size(); i++)
+                            {
+                                try
+                                {
+                                    auto accountObj = accounts->getObject(i);
+                                    if (!accountObj) 
+                                    {
+                                        poco_warning_f1(logger(), "Account at index %d is null", (int)i);
+                                        continue;
+                                    }
+                                
+                                std::string currency = accountObj->optValue<std::string>("currency", "");
+                                std::string availableStr = accountObj->optValue<std::string>("available_balance", "0");
+                                
+                                if (currency.empty()) continue;
+                                
+                                // Parse the available balance (it's a nested object with "value")
+                                if (accountObj->has("available_balance") && accountObj->isObject("available_balance"))
+                                {
+                                    auto balanceObj = accountObj->getObject("available_balance");
+                                    availableStr = balanceObj->optValue<std::string>("value", "0");
+                                }
+                                
+                                double balance = std::stod(availableStr);
+                                
+                                // Try to map currency string to Currency enum
+                                    try
+                                    {
+                                        UTILS::Currency curr(currency);
+                                        SetBalance(curr, balance);
+                                        poco_information_f2(logger(), "Initialized balance: %s = %f", currency, balance);
+                                    }
+                                    catch (std::exception &e)
+                                    {
+                                        poco_debug_f2(logger(), "Skipping unknown currency %s with balance %s", currency, availableStr);
+                                    }
+                                }
+                                catch (std::exception &e)
+                                {
+                                    poco_error_f2(logger(), "Error processing account at index %d: %s", (int)i, std::string(e.what()));
+                                }
+                            }
+                        }
+                        else
+                        {
+                            poco_warning(logger(), "Accounts array is empty or null");
+                        }
+                    }
+                    else
+                    {
+                        poco_warning_f1(logger(), "GetAccounts response missing 'accounts' field: %s", accountsJson);
+                    }
+                }
+                catch (std::exception &e)
+                {
+                    poco_error_f1(logger(), "Failed to initialize balances: %s", std::string(e.what()));
+                }
+            }
+            else
+            {
+                poco_warning(logger(), "InitializeBalances: Not a Coinbase connection - balance initialization not yet implemented for this exchange");
+            }
+        }
+        // For WebSocket connections, balances might come from user channel snapshots
+        else if (auto wsConn = std::dynamic_pointer_cast<COINBASE::ConnectionORDWS>(connection))
+        {
+            poco_information(logger(), "WebSocket connection detected - balances should be synced from user channel snapshot");
+        }
+    }
+
     void OrderManager::PrintBalances(UTILS::CurrencyPair cp)
     {
         std::lock_guard<std::mutex> g(m_mutex);
         std::cout << "Balances: " << cp.BaseCCY().ToString() << "  " << m_balance[cp.BaseCCY()] << " " << cp.QuoteCCY().ToString() << " " << m_balance[cp.QuoteCCY()] << std::endl;
+    }
+
+    void OrderManager::PrintAllBalances()
+    {
+        std::lock_guard<std::mutex> g(m_mutex);
+        
+        std::cout << "\n--- Account Balances ---" << std::endl;
+        
+        if (m_balance.empty())
+        {
+            std::cout << "No balances available" << std::endl;
+        }
+        else
+        {
+            // Iterate through all currencies in the balance map
+            for (const auto& [currency, balance] : m_balance)
+            {
+                std::string currencyStr = currency.ToString();
+                
+                if (balance > 0.0)
+                {
+                    std::cout << currencyStr << " Wallet: " << balance << " " << currencyStr << std::endl;
+                }
+                else
+                {
+                    std::cout << currencyStr << " Wallet: 0 " << currencyStr << " (No funds)" << std::endl;
+                }
+            }
+        }
+        std::cout << std::endl;
     }
 }

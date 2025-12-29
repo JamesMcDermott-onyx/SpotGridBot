@@ -24,6 +24,7 @@ public:
 	ConnectionORD(const CRYPTO::Settings &settings, const std::string &loggingPropsPath, const ConnectionManager& connectionManager);
 
 	std::string GetOrders();
+	std::string GetAccounts();
 	
 	std::string SendOrder(const UTILS::CurrencyPair &instrument, const UTILS::Side side, const RESTAPI::EOrderType orderType,
 						  const UTILS::TimeInForce timeInForce, const double price, const double quantity,

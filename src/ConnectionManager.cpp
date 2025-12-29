@@ -61,8 +61,16 @@ void ConnectionManager::CreateSession(int64_t numId)
 
 	m_connections.emplace( m_settingsCollection[numId].m_name, creator(m_settingsCollection[numId]) );
 
-	if ( m_settingsCollection[numId].m_schema.find(":ORD") !=std::string::npos ) {
+	// Set order connection only for REST order schemas (ending with ":ORD", not ":ORDWS")
+	auto& schema = m_settingsCollection[numId].m_schema;
+	if ( schema.find(":ORD") != std::string::npos && schema.find(":ORDWS") == std::string::npos ) {
 		m_orderConnection = m_settingsCollection[numId].m_name;
+		poco_information_f2(logger(), "Session '%s' configured for REST orders (schema: %s)", 
+			m_settingsCollection[numId].m_name, schema);
+	}
+	else if ( schema.find(":ORDWS") != std::string::npos ) {
+		poco_information_f2(logger(), "Session '%s' configured for WebSocket orders (schema: %s)", 
+			m_settingsCollection[numId].m_name, schema);
 	}
 }
 

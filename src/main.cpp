@@ -49,6 +49,10 @@ int main(int argc, char** argv)
 
         m_connectionManager->Connect(); //connect market data and populate orderbook.
         
+        // Initialize account balances from exchange
+        m_orderManager->InitializeBalances();
+        m_orderManager->PrintAllBalances();
+        
         // Start strategy after connections are established
         strat.Start();
 
