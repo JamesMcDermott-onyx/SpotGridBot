@@ -45,7 +45,7 @@ namespace UTILS {
             std::string processed_key = process_pem_key(ec_private_key_pem);
 
             auto builder = jwt::create()
-                .set_issuer("coinbase")          // ✅ REQUIRED
+                .set_issuer("cdp")          // ✅ REQUIRED - must be "cdp" not "coinbase"
                 .set_subject(api_key)                  // org/.../apiKeys/...
                 .set_not_before(now)                   // numeric nbf
                 .set_expires_at(exp)                   // numeric exp
@@ -53,7 +53,7 @@ namespace UTILS {
                 .set_header_claim("nonce", jwt::claim(nonce));
 
             // For REST API, add URI claim
-            // Format can be either "METHOD host/path" or just passed as full URI string
+            // Format: "METHOD hostname/path" (e.g., "GET api.coinbase.com/api/v3/brokerage/accounts")
             if (!request_host_path.empty())
             {
                 std::string uri;

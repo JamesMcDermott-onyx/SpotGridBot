@@ -117,7 +117,8 @@ std::string ConnectionORD::SendTestLimitOrder()
        poco_information_f1(this->logger(), "SendTestLimitOrder endpoint: %s", endpoint);
 
        std::string msg = this->DoWebRequest(endpoint, Poco::Net::HTTPRequest::HTTP_POST, [&](std::string &path) {},
-           [header, this](Poco::Net::HTTPRequest &request) {
+           [header, this, &body](Poco::Net::HTTPRequest &request) {
+               request.setContentLength(body.size());
                request.add("content-type", "application/json");
                request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
                // Log all headers
@@ -223,9 +224,15 @@ void ConnectionORD::OnMsgError(const int errCode, const std::string &errMsg, con
 //Create JWT authentication token for Coinbase Advanced Trade API
 const AuthHeader ConnectionORD::GetAuthHeader(const std::string& requestPath, const std::string& accessMethod)
 {
+	// Format URI as: "METHOD hostname/full/path"
+	// Example: "GET api.coinbase.com/api/v3/brokerage/accounts"
+	std::string uri = accessMethod + " api.coinbase.com/api/v3/brokerage/" + requestPath;
+	
 	std::string jwt_token = UTILS::create_jwt(
 		m_settings.m_apikey,
-		m_settings.m_secretkey
+		m_settings.m_secretkey,
+		"",  // request_method (already included in uri)
+		uri  // Full URI string
 	);
 
 	// Return JWT token in the sign field for Bearer authentication
@@ -293,6 +300,7 @@ std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, cons
 	},
 	[&](Poco::Net::HTTPRequest &request)
 						{
+							request.setContentLength(body.size());
 							request.add("content-type", "application/json");
 							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
 						},
@@ -325,6 +333,7 @@ std::string ConnectionORD::CancelOrder(const UTILS::CurrencyPair &instrument, co
 	},
 	[&](Poco::Net::HTTPRequest &request)
 						{
+							request.setContentLength(body.size());
 							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
 							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
 							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
@@ -356,6 +365,7 @@ std::string ConnectionORD::QueryOrder(const UTILS::CurrencyPair &instrument, con
 	},
 	[&](Poco::Net::HTTPRequest &request)
 						{
+							request.setContentLength(body.size());
 							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
 							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
 							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
