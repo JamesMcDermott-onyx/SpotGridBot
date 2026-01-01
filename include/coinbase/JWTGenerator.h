@@ -9,6 +9,7 @@
 #include <jwt-cpp/jwt.h>
 #include <openssl/rand.h>
 #include <Poco/String.h>
+#include <Poco/UUIDGenerator.h>
 
 namespace UTILS {
 
@@ -35,23 +36,16 @@ namespace UTILS {
             auto now = clock::now();
 
             // Coinbase wants SHORT lived tokens
-            auto exp = now + std::chrono::seconds{30};
+            auto exp = now + std::chrono::seconds{120};
 
-            // Generate random nonce (binary-safe → base64)
-            std::array<unsigned char, 16> nonce_raw{};
-            RAND_bytes(nonce_raw.data(), nonce_raw.size());
-
-            std::ostringstream oss;
-            for (auto b : nonce_raw)
-                oss << std::hex << std::setw(2) << std::setfill('0') << (int)b;
-
-            std::string nonce = oss.str();
+            // Generate random nonce (UUID string)
+            std::string nonce = Poco::UUIDGenerator::defaultGenerator().createRandom().toString();
 
             // Process PEM key to handle XML escape sequences
             std::string processed_key = process_pem_key(ec_private_key_pem);
 
             auto builder = jwt::create()
-                .set_issuer("coinbase-cloud")          // ✅ REQUIRED
+                .set_issuer("coinbase")          // ✅ REQUIRED
                 .set_subject(api_key)                  // org/.../apiKeys/...
                 .set_not_before(now)                   // numeric nbf
                 .set_expires_at(exp)                   // numeric exp

@@ -1,4 +1,3 @@
-
 #include <Poco/Logger.h>
 
 #include "Utils/ContextBase.h"
@@ -15,6 +14,7 @@
 #include "GridConfig.h"
 #include "GridStrategy.h"
 #include "OrderManager.h"
+#include "coinbase/ConnectionORD.h"
 
 using namespace CORE;
 using namespace UTILS;
@@ -52,9 +52,21 @@ int main(int argc, char** argv)
         // Initialize account balances from exchange
         m_orderManager->InitializeBalances();
         m_orderManager->PrintAllBalances();
+
+        // List all available products from Coinbase
+        auto restConn = std::dynamic_pointer_cast<COINBASE::ConnectionORD>(m_connectionManager->OrderConnection());
+        if (restConn) {
+            std::string productsResp = restConn->ListProducts();
+            restConn->PrettyPrintProducts(productsResp);
+            // Optionally, still send the test order for debugging
+            std::string testOrderResp = restConn->SendTestLimitOrder();
+            poco_information(logger, Poco::format("SendTestLimitOrder returned: %s", testOrderResp));
+        } else {
+            poco_warning(logger, "OrderConnection is not a COINBASE::ConnectionORD instance");
+        }
         
         // Start strategy after connections are established
-        strat.Start();
+        //strat.Start();
 
         poco_information(logger, "SpotGridBot has started - press <enter> to exit ..");
         std::cin.get();

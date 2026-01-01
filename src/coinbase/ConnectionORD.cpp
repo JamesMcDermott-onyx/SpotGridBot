@@ -24,6 +24,122 @@ using namespace CORE::CRYPTO;
 
 namespace CORE {
 namespace COINBASE {
+// Fetch and log the products list from Coinbase
+std::string ConnectionORD::ListProducts()
+{
+	const std::string requestPath("products");
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "GET");
+
+	std::string msg = this->DoWebRequest(this->m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_GET, [&](std::string &path) {},
+		[&](Poco::Net::HTTPRequest &request) {
+			request.add("content-type", "application/json");
+			request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
+		});
+
+	return msg;
+}
+// Fetch product details for a specific product_id
+std::string ConnectionORD::GetProductDetails(const std::string& productId)
+{
+	const std::string requestPath("products/" + productId);
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "GET");
+
+	std::string msg = this->DoWebRequest(this->m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_GET, [&](std::string &path) {},
+		[&](Poco::Net::HTTPRequest &request) {
+			request.add("content-type", "application/json");
+			request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
+		});
+
+	return msg;
+}
+// Pretty print the products list from Coinbase
+void ConnectionORD::PrettyPrintProducts(const std::string& productsJson)
+{
+	try {
+		Poco::JSON::Parser parser;
+		auto result = parser.parse(productsJson);
+		auto obj = result.extract<Poco::JSON::Object::Ptr>();
+		auto products = obj->getArray("products");
+		if (!products) {
+			poco_warning_f1(this->logger(), "No 'products' array in response: %s", productsJson);
+			return;
+		}
+		std::ostringstream oss;
+		oss << "\nPRODUCTS LIST (product_id | base_name | quote_name | status | trading_disabled)\n";
+		oss << "-----------------------------------------------------------------------------------\n";
+		for (size_t i = 0; i < products->size(); ++i) {
+			auto prod = products->getObject(i);
+			std::string pid = prod->getValue<std::string>("product_id");
+			std::string base = prod->getValue<std::string>("base_name");
+			std::string quote = prod->getValue<std::string>("quote_name");
+			std::string status = prod->getValue<std::string>("status");
+			bool trading_disabled = prod->getValue<bool>("trading_disabled");
+			oss << pid << " | " << base << " | " << quote << " | " << status << " | " << (trading_disabled ? "YES" : "NO") << "\n";
+		}
+		poco_information_f1(this->logger(), "%s", oss.str());
+	} catch (const std::exception& e) {
+		poco_error_f1(this->logger(), "PrettyPrintProducts exception: %s", std::string(e.what()));
+	}
+}
+
+// Debug: Send a minimal hardcoded JSON limit order to Coinbase
+std::string ConnectionORD::SendTestLimitOrder()
+{
+       // First, list available products for debugging
+       std::string productsResp = ListProducts();
+       PrettyPrintProducts(productsResp);
+
+       // Get details for BTC-USDC
+       std::string productDetails = GetProductDetails("BTC-USDC");
+       poco_information_f1(this->logger(), "Product details for BTC-USDC: %s", productDetails);
+
+       // Get accounts
+       std::string accounts = GetAccounts();
+       poco_information_f1(this->logger(), "Accounts: %s", accounts);
+
+       const std::string requestPath("orders");
+       std::string uuid = "test-" + Poco::UUIDGenerator::defaultGenerator().createRandom().toString();
+       std::string body =
+	       "{"
+	       "\"client_order_id\": \"test123\","
+	       "\"product_id\": \"BTC-USDC\","
+	       "\"side\": \"BUY\","
+	       "\"order_configuration\": {"
+	       "\"limit_limit_gtc\": {"
+	       "\"base_size\": \"0.001\","
+	       "\"limit_price\": \"94525.00\""
+	       "}"
+	       "}"
+	       "}";
+       std::string endpoint = this->m_settings.m_orders_http + requestPath;
+       // Coinbase REST API authentication (JWT)
+       CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "POST");
+       poco_information_f1(this->logger(), "SendTestLimitOrder endpoint: %s", endpoint);
+
+       std::string msg = this->DoWebRequest(endpoint, Poco::Net::HTTPRequest::HTTP_POST, [&](std::string &path) {},
+           [header, this](Poco::Net::HTTPRequest &request) {
+               request.add("content-type", "application/json");
+               request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
+               // Log all headers
+               std::ostringstream oss;
+               oss << "SendTestLimitOrder HTTP Headers:" << std::endl;
+               for (const auto& h : request)
+                   oss << h.first << ": " << h.second << std::endl;
+               poco_information_f1(this->logger(), "%s", oss.str());
+           },
+	       [&](const Poco::Net::HTTPResponse &response) {
+		       this->m_logger.Session().Information(response.getReason());
+	       },
+	       [&](std::ostream &ostr) {
+		       ostr << body;
+		       poco_information_f1(this->logger(), "SendTestLimitOrder JSON: %s", body);
+		       this->m_logger.Protocol().Outging(body);
+	       });
+
+       this->m_logger.Protocol().Incoming(msg);
+       poco_information_f1(this->logger(), "SendTestLimitOrder response: %s", msg);
+       return msg;
+}
 
 //------------------------------------------------------------------------------
 ConnectionORD::ConnectionORD(const CRYPTO::Settings &settings, const std::string &loggingPropsPath, const ConnectionManager& connectionManager)
@@ -107,45 +223,12 @@ void ConnectionORD::OnMsgError(const int errCode, const std::string &errMsg, con
 //Create JWT authentication token for Coinbase Advanced Trade API
 const AuthHeader ConnectionORD::GetAuthHeader(const std::string& requestPath, const std::string& accessMethod)
 {
-	// Generate JWT token for Coinbase Advanced Trade
-	// For REST API, we need to include the HTTP method and full path in the JWT
-	// The URI should match: "GET api.coinbase.com/api/v3/brokerage/orders"
-	std::string fullPath = "/api/v3/brokerage/" + requestPath;
-	std::string host = "api.coinbase.com";
-	std::string uri = accessMethod + " " + host + fullPath;
-	
-	poco_information_f3(logger(), "Generating JWT for REST request: method=%s, path=%s, uri=%s", 
-		accessMethod, fullPath, uri);
-	
 	std::string jwt_token = UTILS::create_jwt(
 		m_settings.m_apikey,
-		m_settings.m_secretkey,
-		"",     // Empty method - we're passing full URI
-		uri     // Full URI in format "METHOD host/path"
+		m_settings.m_secretkey
 	);
 
-	// Log the JWT token (first 50 and last 20 chars for debugging)
-	std::string jwt_preview = jwt_token.length() > 70 ? 
-		jwt_token.substr(0, 50) + "..." + jwt_token.substr(jwt_token.length() - 20) : jwt_token;
-	poco_information_f1(logger(), "Generated JWT token: %s", jwt_preview);
-	
-	// Try to decode and log JWT claims for debugging
-	// try {
-	// 	auto decoded = jwt::decode(jwt_token);
-	// 	poco_information(logger(), "JWT Claims:");
-	// 	poco_information_f1(logger(), "  iss: %s", decoded.get_issuer());
-	// 	poco_information_f1(logger(), "  sub: %s", decoded.get_subject());
-	// 	if (decoded.has_payload_claim("uri")) {
-	// 		poco_information_f1(logger(), "  uri: %s", decoded.get_payload_claim("uri").as_string());
-	// 	}
-	// 	poco_information_f1(logger(), "  exp: %?d", std::to_string(decoded.get_expires_at().time_since_epoch().count()));
-	// 	poco_information_f1(logger(), "  kid (header): %s", decoded.get_header_claim("kid").as_string());
-	// } catch (const std::exception& e) {
-	// 	poco_warning_f1(logger(), "Failed to decode JWT for logging: %s", std::string(e.what()));
-	// }
-
-	// Return JWT token in the sign field (key will be "Authorization")
-	// timestamp and passphrase not needed for JWT auth
+	// Return JWT token in the sign field for Bearer authentication
 	return AuthHeader(jwt_token, m_settings.m_apikey, "", "");
 }
 
@@ -181,10 +264,10 @@ std::string ConnectionORD::GetAccounts()
 
 //------------------------------------------------------------------------------
 std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, const UTILS::Side side, const RESTAPI::EOrderType orderType,
-								  const UTILS::TimeInForce timeInForce, const double price, const double quantity, const std::string &clientOrderId)
+                                  const UTILS::TimeInForce timeInForce, const double price, const double quantity, const std::string &clientOrderId)
 {
 	const std::string requestPath("orders");
- 	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "POST");
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "POST");
 	
 	// Generate unique client order ID
 	Poco::UUIDGenerator& generator = Poco::UUIDGenerator::defaultGenerator();
@@ -203,7 +286,6 @@ std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, cons
 	body+="\""+std::to_string(quantity)+"\"";
 	body+=",\"post_only\":false";
 	body+="}}}";
-
 
 	std::string msg = DoWebRequest(m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_POST, [&](std::string &path)
 	{
@@ -243,8 +325,10 @@ std::string ConnectionORD::CancelOrder(const UTILS::CurrencyPair &instrument, co
 	},
 	[&](Poco::Net::HTTPRequest &request)
 						{
+							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
+							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
+							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
 							request.add("content-type", "application/json");
-							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
 						},
 	[&](const Poco::Net::HTTPResponse &response)
 	{
@@ -272,8 +356,10 @@ std::string ConnectionORD::QueryOrder(const UTILS::CurrencyPair &instrument, con
 	},
 	[&](Poco::Net::HTTPRequest &request)
 						{
+							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
+							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
+							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
 							request.add("content-type", "application/json");
-							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
 						},
 	[&](const Poco::Net::HTTPResponse &response)
 	{
