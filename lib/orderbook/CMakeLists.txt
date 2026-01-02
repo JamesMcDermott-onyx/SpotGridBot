@@ -13,4 +13,8 @@ add_library(OrderBook SHARED ${SOURCE_FILES})
 
 target_include_directories(OrderBook PUBLIC ${OrderBook_SOURCE_DIR}/include)
 
+target_link_libraries(OrderBook PUBLIC
+        Poco::Foundation
+)
+
 #add_subdirectory(tests)

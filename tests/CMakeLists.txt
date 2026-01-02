@@ -21,14 +21,14 @@ macro(package_add_test TESTNAME)
             gmock
             gtest_main
             crypto
-            PocoFoundation
-            PocoUtil
-            PocoNet
-            PocoNetSSL
-            PocoJSON
-            PocoDataMySQL
-            PocoData
-            PocoXML
+            Poco::Foundation
+            Poco::Util
+            Poco::Net
+            Poco::NetSSL
+            Poco::JSON
+            Poco::Data
+            Poco::Data
+            Poco::XML
             )
 
     set_target_properties(${TESTNAME} PROPERTIES FOLDER tests)

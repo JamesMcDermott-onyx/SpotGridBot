@@ -5,7 +5,11 @@
 #include "Tools.h"
 #include "Utils/Result.h"
 #include "Poco/URI.h"
+#include "Poco/UUID.h"
+#include "Poco/UUIDGenerator.h"
 #include "coinbase/ConnectionORD.h"
+#include "coinbase/JWTGenerator.h"
+#include <jwt-cpp/jwt.h>
 
 #include "Crypto.h"
 #include "libbase64.hpp"
@@ -20,6 +24,123 @@ using namespace CORE::CRYPTO;
 
 namespace CORE {
 namespace COINBASE {
+// Fetch and log the products list from Coinbase
+std::string ConnectionORD::ListProducts()
+{
+	const std::string requestPath("products");
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "GET");
+
+	std::string msg = this->DoWebRequest(this->m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_GET, [&](std::string &path) {},
+		[&](Poco::Net::HTTPRequest &request) {
+			request.add("content-type", "application/json");
+			request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
+		});
+
+	return msg;
+}
+// Fetch product details for a specific product_id
+std::string ConnectionORD::GetProductDetails(const std::string& productId)
+{
+	const std::string requestPath("products/" + productId);
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "GET");
+
+	std::string msg = this->DoWebRequest(this->m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_GET, [&](std::string &path) {},
+		[&](Poco::Net::HTTPRequest &request) {
+			request.add("content-type", "application/json");
+			request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
+		});
+
+	return msg;
+}
+// Pretty print the products list from Coinbase
+void ConnectionORD::PrettyPrintProducts(const std::string& productsJson)
+{
+	try {
+		Poco::JSON::Parser parser;
+		auto result = parser.parse(productsJson);
+		auto obj = result.extract<Poco::JSON::Object::Ptr>();
+		auto products = obj->getArray("products");
+		if (!products) {
+			poco_warning_f1(this->logger(), "No 'products' array in response: %s", productsJson);
+			return;
+		}
+		std::ostringstream oss;
+		oss << "\nPRODUCTS LIST (product_id | base_name | quote_name | status | trading_disabled)\n";
+		oss << "-----------------------------------------------------------------------------------\n";
+		for (size_t i = 0; i < products->size(); ++i) {
+			auto prod = products->getObject(i);
+			std::string pid = prod->getValue<std::string>("product_id");
+			std::string base = prod->getValue<std::string>("base_name");
+			std::string quote = prod->getValue<std::string>("quote_name");
+			std::string status = prod->getValue<std::string>("status");
+			bool trading_disabled = prod->getValue<bool>("trading_disabled");
+			oss << pid << " | " << base << " | " << quote << " | " << status << " | " << (trading_disabled ? "YES" : "NO") << "\n";
+		}
+		poco_information_f1(this->logger(), "%s", oss.str());
+	} catch (const std::exception& e) {
+		poco_error_f1(this->logger(), "PrettyPrintProducts exception: %s", std::string(e.what()));
+	}
+}
+
+// Debug: Send a minimal hardcoded JSON limit order to Coinbase
+std::string ConnectionORD::SendTestLimitOrder()
+{
+       // First, list available products for debugging
+       std::string productsResp = ListProducts();
+       PrettyPrintProducts(productsResp);
+
+       // Get details for BTC-USDC
+       std::string productDetails = GetProductDetails("BTC-USDC");
+       poco_information_f1(this->logger(), "Product details for BTC-USDC: %s", productDetails);
+
+       // Get accounts
+       std::string accounts = GetAccounts();
+       poco_information_f1(this->logger(), "Accounts: %s", accounts);
+
+       const std::string requestPath("orders");
+       std::string uuid = "test-" + Poco::UUIDGenerator::defaultGenerator().createRandom().toString();
+       std::string body =
+	       "{"
+	       "\"client_order_id\": \"test123\","
+	       "\"product_id\": \"BTC-USDC\","
+	       "\"side\": \"BUY\","
+	       "\"order_configuration\": {"
+	       "\"limit_limit_gtc\": {"
+	       "\"base_size\": \"0.001\","
+	       "\"limit_price\": \"94525.00\""
+	       "}"
+	       "}"
+	       "}";
+       std::string endpoint = this->m_settings.m_orders_http + requestPath;
+       // Coinbase REST API authentication (JWT)
+       CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "POST");
+       poco_information_f1(this->logger(), "SendTestLimitOrder endpoint: %s", endpoint);
+
+       std::string msg = this->DoWebRequest(endpoint, Poco::Net::HTTPRequest::HTTP_POST, [&](std::string &path) {},
+           [header, this, &body](Poco::Net::HTTPRequest &request) {
+               request.setContentLength(body.size());
+               request.add("content-type", "application/json");
+               request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
+               // Log all headers
+               std::ostringstream oss;
+               oss << "SendTestLimitOrder HTTP Headers:" << std::endl;
+               for (const auto& h : request)
+                   oss << h.first << ": " << h.second << std::endl;
+               poco_information_f1(this->logger(), "%s", oss.str());
+           },
+	       [&](const Poco::Net::HTTPResponse &response) {
+		       this->m_logger.Session().Information(response.getReason());
+	       },
+	       [&](std::ostream &ostr) {
+		       ostr << body;
+		       poco_information_f1(this->logger(), "SendTestLimitOrder JSON: %s", body);
+		       this->m_logger.Protocol().Outging(body);
+	       });
+
+       this->m_logger.Protocol().Incoming(msg);
+       poco_information_f1(this->logger(), "SendTestLimitOrder response: %s", msg);
+       return msg;
+}
 
 //------------------------------------------------------------------------------
 ConnectionORD::ConnectionORD(const CRYPTO::Settings &settings, const std::string &loggingPropsPath, const ConnectionManager& connectionManager)
@@ -100,21 +221,22 @@ void ConnectionORD::OnMsgError(const int errCode, const std::string &errMsg, con
 	poco_error_f2(logger(), "received 'error': code='%s', msg='%s'", std::to_string(errCode), errMsg);
 }
 
-//Create a Market Data authentication signature
+//Create JWT authentication token for Coinbase Advanced Trade API
 const AuthHeader ConnectionORD::GetAuthHeader(const std::string& requestPath, const std::string& accessMethod)
 {
-	auto cb_access_timestamp = std::to_string(UTILS::CurrentTimestamp() / 1000000000); //as seconds
-	auto cb_access_method{accessMethod};
-	auto cb_access_request_path{requestPath};
+	// Format URI as: "METHOD hostname/full/path"
+	// Example: "GET api.coinbase.com/api/v3/brokerage/accounts"
+	std::string uri = accessMethod + " api.coinbase.com/api/v3/brokerage/" + requestPath;
+	
+	std::string jwt_token = UTILS::create_jwt(
+		m_settings.m_apikey,
+		m_settings.m_secretkey,
+		"",  // request_method (already included in uri)
+		uri  // Full URI string
+	);
 
-	//Now build the signature...
-	auto msg = cb_access_timestamp + cb_access_method + cb_access_request_path;
-
-	const auto decodedKey = libbase64::decode<std::string, char, unsigned char, true>(m_settings.m_secretkey);
-	const auto digest = HMAC(EVP_sha256(), decodedKey.c_str(), decodedKey.size(), (unsigned char *) msg.c_str(), msg.size(), NULL, NULL);
-	const auto cb_access_sign = libbase64::encode<std::string, char, unsigned char, true>( digest, SHA256_DIGEST_LENGTH);
-
-	return AuthHeader(cb_access_sign, m_settings.m_apikey, m_settings.m_passphrase, cb_access_timestamp);
+	// Return JWT token in the sign field for Bearer authentication
+	return AuthHeader(jwt_token, m_settings.m_apikey, "", "");
 }
 
 //------------------------------------------------------------------------------
@@ -128,20 +250,38 @@ std::string ConnectionORD::GetOrders()
 	}, [&](Poco::Net::HTTPRequest &request)
 						{
 							request.add("content-type", "application/json");
-							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
-							request.add("CB-ACCESS-PASSPHRASE",  std::get<CB_ACCESS_PASSPHRASE>(header));
-							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
-							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
+							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
+						});
+}
+
+//------------------------------------------------------------------------------
+std::string ConnectionORD::GetAccounts()
+{
+	const std::string requestPath("accounts");
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "GET");
+
+	return DoWebRequest(m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_GET, [&](std::string &path)
+	{
+	}, [&](Poco::Net::HTTPRequest &request)
+						{
+							request.add("content-type", "application/json");
+							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
 						});
 }
 
 //------------------------------------------------------------------------------
 std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, const UTILS::Side side, const RESTAPI::EOrderType orderType,
-								  const UTILS::TimeInForce timeInForce, const double price, const double quantity, const std::string &clientOrderId)
+                                  const UTILS::TimeInForce timeInForce, const double price, const double quantity, const std::string &clientOrderId)
 {
 	const std::string requestPath("orders");
- 	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "POST");
-	std::string body("{ \"client_order_id\": \"0000-00000-000000\", \"product_id\":");
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "POST");
+	
+	// Generate unique client order ID
+	Poco::UUIDGenerator& generator = Poco::UUIDGenerator::defaultGenerator();
+	Poco::UUID uuid = generator.createRandom();
+	std::string uniqueClientOrderId = uuid.toString();
+	
+	std::string body("{ \"client_order_id\": \"" + uniqueClientOrderId + "\", \"product_id\":");
 	body+="\""+TranslateSymbolToExchangeSpecific(instrument)+"\"";
 	body+=",\"side\":";
 	body+=side==UTILS::Side::BUY?"\"BUY\"":"\"SELL\"";
@@ -149,10 +289,8 @@ std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, cons
 	body+=timeInForce==UTILS::TimeInForce::GTC ? "\"limit_limit_gtc\":{" : "\"limit_limit_ioc\":{";
 	body+="\"limit_price\":";
 	body+="\""+std::to_string(price)+"\"";
-	body+=",\"quote_size\":";
-	body+="\""+std::to_string(quantity)+"\"";
 	body+=",\"base_size\":";
-	body+="\""+std::to_string(double(quantity/price))+"\"";
+	body+="\""+std::to_string(quantity)+"\"";
 	body+=",\"post_only\":false";
 	body+="}}}";
 
@@ -162,11 +300,9 @@ std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, cons
 	},
 	[&](Poco::Net::HTTPRequest &request)
 						{
+							request.setContentLength(body.size());
 							request.add("content-type", "application/json");
-							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
-							request.add("CB-ACCESS-PASSPHRASE",  std::get<CB_ACCESS_PASSPHRASE>(header));
-							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
-							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
+							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
 						},
 	[&](const Poco::Net::HTTPResponse &response)
 	{
@@ -174,10 +310,12 @@ std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, cons
 	},
 	[&](std::ostream &ostr) {
 		ostr << body;
+		poco_information_f1(logger(), "SendOrder JSON: %s", body);
 		m_logger.Protocol().Outging(body);
 	});
 
 	m_logger.Protocol().Incoming(msg);
+	poco_information_f1(logger(), "SendOrder response: %s", msg);
 	return msg;
  }
 
@@ -195,11 +333,11 @@ std::string ConnectionORD::CancelOrder(const UTILS::CurrencyPair &instrument, co
 	},
 	[&](Poco::Net::HTTPRequest &request)
 						{
-							request.add("content-type", "application/json");
+							request.setContentLength(body.size());
 							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
-							request.add("CB-ACCESS-PASSPHRASE",  std::get<CB_ACCESS_PASSPHRASE>(header));
 							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
 							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
+							request.add("content-type", "application/json");
 						},
 	[&](const Poco::Net::HTTPResponse &response)
 	{
@@ -227,11 +365,11 @@ std::string ConnectionORD::QueryOrder(const UTILS::CurrencyPair &instrument, con
 	},
 	[&](Poco::Net::HTTPRequest &request)
 						{
-							request.add("content-type", "application/json");
+							request.setContentLength(body.size());
 							request.add("CB-ACCESS-KEY", std::get<CB_ACCESS_KEY>(header));
-							request.add("CB-ACCESS-PASSPHRASE",  std::get<CB_ACCESS_PASSPHRASE>(header));
 							request.add("CB-ACCESS-SIGN", std::get<CB_ACCESS_SIGN>(header));
 							request.add("CB-ACCESS-TIMESTAMP", std::get<CB_ACCESS_TIMESTAMP>(header));
+							request.add("content-type", "application/json");
 						},
 	[&](const Poco::Net::HTTPResponse &response)
 	{

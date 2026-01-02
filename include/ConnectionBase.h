@@ -22,7 +22,6 @@
 #include "MessageProcessor.h"
 #include "Tools.h"
 #include "CryptoCommon.h"
-#include "ActiveQuoteTable.h"
 #include "Logger.h"
 #include "IConnection.h"
 
@@ -33,13 +32,18 @@ namespace CORE {
 namespace CORE {
 
 namespace CRYPTO {
-const size_t MAX_BUFF = 2000000;
+const size_t MAX_BUFF = 10000000;  // 10MB buffer for large WebSocket messages (e.g., level2 snapshots)
 const std::string JSON_ERROR_NOT_IMPLEMENTED = CreateJSONMessageWithCode("Not implemented");
 // If connection thread has more exceptions in a row than this, connection breaks:
 const int MAX_NUMBER_OF_EXCEPTIONS_IN_CONNECTION_THREAD = 100;
 
 ////////////////////////////////////////////////////////////////////////////
-// Connection
+/*! \brief Base Connection Class for WebSocket Connections
+ * 
+ * Provides common WebSocket functionality for both market data and order
+ * management connections. Handles WebSocket lifecycle, message processing,
+ * and connection management.
+ */
 ////////////////////////////////////////////////////////////////////////////
 class ConnectionBase : public CRYPTO::IConnection, public UTILS::Logging, public UTILS::ErrorHandler
 {
@@ -50,20 +54,23 @@ public:
 	
 	using TInstruments = std::set<std::string>;
 	
+	/*! \brief Connect to WebSocket endpoint */
 	UTILS::BoolResult Connect() override;
 	
+	/*! \brief Disconnect from WebSocket */
 	void Disconnect() override;
 	
-	void PublishQuotes(UTILS::BookUpdate::Ptr nmd);
-	
+	/*! \brief Check if WebSocket is connected */
 	bool IsConnected() const override
 	{
 		return m_connected;
 	}
 	
+	/*! \brief Set connection active/inactive state */
 	void SetActive(bool active) override
 	{ m_active = active; }
 	
+	/*! \brief Check if connection is active */
 	bool IsActive() override
 	{ return m_active; }
 	
@@ -73,7 +80,7 @@ public:
 		return m_lastMessageTime.load();
 	}
 	
-	/*! \brief returns reference to settings */
+	/*! \brief Returns reference to settings */
 	const CRYPTO::Settings &GetSettings() const override
 	{
 		return m_settings;
@@ -82,79 +89,33 @@ public:
 	/*! \brief Returns a set of instruments from configuration */
 	TInstruments GetInstruments() const;
 	
-	/*! \brief Returns depth from configuration */
-	unsigned int GetDepth() const
-	{
-		return GetSettings().m_depth;
-	}
-	
-	UTILS::BoolResult SubscribeInstrument(const std::string &symbol);
-	
-	UTILS::BoolResult UnsubscribeInstrument(const std::string &symbol);
-	
-	UTILS::BookUpdate::Ptr ParseQuote(PriceMessage::Levels &levels, const char side, const std::string &instrument);
-	
+	/*! \brief Translate symbol from exchange format to internal format */
 	virtual std::string TranslateSymbol(const std::string &symbol) const
 	{
 		return symbol;
 	}
 	
+	/*! \brief Translate symbol from internal format to exchange-specific format */
 	virtual std::string TranslateSymbolToExchangeSpecific(const std::string &symbol) const
 	{
 		return symbol;
 	}
 	
-	void Start() override
+	/*! \brief Start the connection - to be overridden by derived classes */
+	virtual void Start() override { }
+	
+	/*! \brief Returns reference to message processor */
+	CRYPTO::MessageProcessor &GetMessageProcessor()
 	{
-		const auto instruments = GetInstruments();
-		Snapshot(instruments);
-		Subscribe(instruments);
+		return m_messageProcessor;
 	}
-	
-	/*! \brief Processing snapshot for each instrument
-	* @param instruments: set of instruments
-	* */
-	virtual void Snapshot(const TInstruments &instruments) { }
-	
-	virtual void Subscribe(const TInstruments &instruments) { }
-	
-	virtual void Unsubscribe(const TInstruments &instruments) { };
-	
-	//------------------------------------------------------------------------------
-	virtual void SideTranslator(const char *side, PriceMessage::Levels &depth, const std::shared_ptr<JSONDocument> jd) const
-	{
-		if (auto levels = jd->GetArray(side))
-		{
-			Poco::Dynamic::Array da = *levels;
-			for (size_t i = 0; i < levels->size(); ++i)
-			{
-				depth.emplace_back(std::make_shared<Level>());
-				depth.back()->price = da[i][0].toString();
-				depth.back()->size = da[i][1].toString();
-			}
-		}
-	}
-	
-	//Parse Snapshot or incremental msg..
-	virtual std::unique_ptr<PriceMessage> ParseMessage(const std::shared_ptr<JSONDocument> jd, const std::string &bidName, const std::string &askName) const
-	{
-		auto msg = std::make_unique<PriceMessage>();
-		SideTranslator(bidName.c_str(), msg->Bids, jd);
-		SideTranslator(askName.c_str(), msg->Asks, jd);
-		return msg;
-	}
-
-/*! \brief Returns reference to message processor */
-CRYPTO::MessageProcessor &GetMessageProcessor()
-{
-	return m_messageProcessor;
-}
 
 protected:
 	
-	/*! \brief creates internal websocket */
+	/*! \brief Creates internal websocket */
 	virtual void CreateWebSocket();
 	
+	/*! \brief Receive data from WebSocket */
 	virtual int ReceiveWebSocketData(Poco::Net::WebSocket *ws, char *buffer, size_t bufferSize, int &outFlags);
 	
 	/*! \brief Helper: sends a payload to websocket
@@ -163,16 +124,16 @@ protected:
 	* */
 	virtual bool Send(const std::string &payload);
 	
+	/*! \brief Get currency pair from symbol */
 	UTILS::CurrencyPair GetCurrencyPair(const std::string &symbol) const
 	{
 		return m_cpHash.GetCurrencyPair(symbol);
 	}
 	
-	UTILS::BoolResult PublishQuote(int64_t key, int64_t refKey, int64_t timestamp,
-															 int64_t receiveTime, UTILS::CurrencyPair cp, const UTILS::BookUpdate::Entry &entry);
-	
 	Settings m_settings;
 	Logger m_logger; //Session logger..
+	const ConnectionManager& m_connectionManager;
+	
 private:
 	bool m_active;
 	
@@ -193,17 +154,12 @@ private:
 	MessageQueue m_messageQueue;
 	
 	char m_buffer[MAX_BUFF] { };
+	std::string m_fragmentedMessage; // Accumulator for fragmented WebSocket messages
 
 	std::unique_ptr<std::thread> m_listenerThread;
 	
 	CRYPTO::MessageProcessor m_messageProcessor;
-	
-	CORE::ActiveQuoteTable m_activeQuoteTable;
-	
-	// Number of published quotes
-	std::atomic<unsigned long> m_publishedQuotesCounter { 0 };
-	mutable std::atomic<unsigned long> m_publishedQuotesOld { 0 }; // to calculate delta
-	const ConnectionManager& m_connectionManager;
 };
-}
-}
+
+} // namespace CRYPTO
+} // namespace CORE

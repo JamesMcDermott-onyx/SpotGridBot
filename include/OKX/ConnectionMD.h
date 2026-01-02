@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ConnectionBase.h"
+#include "ConnectionBaseMD.h"
 #include "OKX/Definitions.h"
 
 namespace CORE {
@@ -13,7 +13,7 @@ namespace OKX {
         const std::string& requestBody,
         const std::string& secretKey);
 
-    class ConnectionMD : public CORE::CRYPTO::ConnectionBase {
+    class ConnectionMD : public CORE::CRYPTO::ConnectionBaseMD {
     public:
 		ConnectionMD(const CRYPTO::Settings& settings, const std::string& loggingPropsPath, const ConnectionManager& connectionManager);
 		

@@ -1,16 +1,51 @@
 <Configuration>
 
     <GridConfig
-        instrument="BTC/USDT"
-        base_price="30000.0"
-        levels_below="4"
-        levels_above="4"
+        instrument="BTC/USDC"
+        base_price="95000.0"
+        levels_below="2"
+        levels_above="2"
         step_percent="0.005"
         percent_order_qty="0.001"
         max_position="2.0"
     />
 
     <SessionConfig>
+        <Session name="COINBASEMD"
+                     num_id="3"
+                     host="advanced-trade-ws.coinbase.com"
+                     portfolio="TEST_API"
+                     api_key="organizations/a9df3ebf-0eb3-4667-8f8c-493ea6e5f73f/apiKeys/2930fb2a-c257-408f-a4a0-8c228c3435d9"
+                     secret_key="-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIKrF3dQQU+aOrCdBuGtZPWKgqBk74wBKyEayZDF7ehgvoAoGCCqGSM49\nAwEHoUQDQgAE8U6PxTdpbfYDciXC/Mi88Sq1MWTxOl7Z1FDgVx8t1exvhrW8YUDW\ngBJ9T8h6k/o+TGCFKrjfT4ahe7w+0jsy4Q==\n-----END EC PRIVATE KEY-----"
+                     port="443"
+                     channels="level2"
+                     schema="Coinbase:MD"
+                     instruments="BTC/USDC"
+        />
+
+        <Session name="COINBASEORD"
+                num_id="4"
+                protocol="rest"
+                orders_http="https://api.coinbase.com/api/v3/brokerage/"
+                api_key="organizations/a9df3ebf-0eb3-4667-8f8c-493ea6e5f73f/apiKeys/2930fb2a-c257-408f-a4a0-8c228c3435d9"
+                secret_key="-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIKrF3dQQU+aOrCdBuGtZPWKgqBk74wBKyEayZDF7ehgvoAoGCCqGSM49\nAwEHoUQDQgAE8U6PxTdpbfYDciXC/Mi88Sq1MWTxOl7Z1FDgVx8t1exvhrW8YUDW\ngBJ9T8h6k/o+TGCFKrjfT4ahe7w+0jsy4Q==\n-----END EC PRIVATE KEY-----\n"
+                port="443"
+                passphrase=""
+                schema="Coinbase:ORD"
+        />
+
+        <!-- Order Monitor: WebSocket for real-time order status updates -->
+        <Session name="COINBASEORD_WS"
+                num_id="5"
+                protocol="ws"
+                host="advanced-trade-ws.coinbase.com"
+                port="443"
+                api_key="organizations/a9df3ebf-0eb3-4667-8f8c-493ea6e5f73f/apiKeys/2930fb2a-c257-408f-a4a0-8c228c3435d9"
+                secret_key="-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIKrF3dQQU+aOrCdBuGtZPWKgqBk74wBKyEayZDF7ehgvoAoGCCqGSM49\nAwEHoUQDQgAE8U6PxTdpbfYDciXC/Mi88Sq1MWTxOl7Z1FDgVx8t1exvhrW8YUDW\ngBJ9T8h6k/o+TGCFKrjfT4ahe7w+0jsy4Q==\n-----END EC PRIVATE KEY-----\n"
+                passphrase=""
+                schema="Coinbase:ORDWS"
+        />
+
 <!--        <Session name="BINANCEMD"-->
 <!--                     num_id="1"-->
 <!--                     host="stream.binance.com"-->
@@ -33,28 +68,16 @@
 <!--                 order_monitoring_interval="5000"-->
 <!--        />-->
 
-        <Session name="COINBASEMD"
-                     num_id="3"
-                     host="advanced-trade-ws.coinbase.com"
-                     portfolio="TEST_API"
-                     api_key="organizations/a9df3ebf-0eb3-4667-8f8c-493ea6e5f73f/apiKeys/2930fb2a-c257-408f-a4a0-8c228c3435d9"
-                     secret_key="-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIKrF3dQQU+aOrCdBuGtZPWKgqBk74wBKyEayZDF7ehgvoAoGCCqGSM49\nAwEHoUQDQgAE8U6PxTdpbfYDciXC/Mi88Sq1MWTxOl7Z1FDgVx8t1exvhrW8YUDW\ngBJ9T8h6k/o+TGCFKrjfT4ahe7w+0jsy4Q==\n-----END EC PRIVATE KEY-----"
-                     port="443"
-                     channels="level2"
-                     schema="Coinbase:MD"
-                     instruments="BTC/USD"
-        />
-
-        <Session name="COINBASEORD"
-                     num_id="4"
-                     protocol="rest"
-                     orders_http="https://api-sandbox.coinbase.com/api/v3/brokerage/"
-                     api_key="organizations/a9df3ebf-0eb3-4667-8f8c-493ea6e5f73f/apiKeys/2930fb2a-c257-408f-a4a0-8c228c3435d9"
-                     secret_key="-----BEGIN EC PRIVATE KEY-----\nMHcCAQEEIKrF3dQQU+aOrCdBuGtZPWKgqBk74wBKyEayZDF7ehgvoAoGCCqGSM49\nAwEHoUQDQgAE8U6PxTdpbfYDciXC/Mi88Sq1MWTxOl7Z1FDgVx8t1exvhrW8YUDW\ngBJ9T8h6k/o+TGCFKrjfT4ahe7w+0jsy4Q==\n-----END EC PRIVATE KEY-----\n"
-                     port="443"
-                     passphrase="thsv5x4pwhmo"
-                     schema="Coinbase:ORD"
-        />
+        <!-- <Session name="COINBASEORD"  -->
+        <!--       num_id="4"  -->
+        <!--       protocol="rest" -->
+        <!--       orders_http="https://api-sandbox.coinbase.com/api/v3/brokerage/"  -->
+        <!--       api_key="organizations/a9df3ebf-0eb3-4667-8f8c-493ea6e5f73f/apiKeys/2930fb2a-c257-408f-a4a0-8c228c3435d9"  -->
+        <!--       secret_key=""  -->
+        <!--       port="443"  -->
+        <!--       passphrase="thsv5x4pwhmo"  -->
+        <!--       schema="Coinbase:ORD"  -->
+        <!-- /> -->
 
 <!--        <Session name="OKX_TR_01"-->
 <!--                 num_id="999206"-->

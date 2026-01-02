@@ -1,3 +1,7 @@
+find_package(OpenSSL REQUIRED)
+include_directories(/usr/local/include)
+link_directories(/usr/local/lib)
+find_package(Poco REQUIRED COMPONENTS Foundation Util Net NetSSL JSON Data Crypto)
 cmake_minimum_required(VERSION 3.14)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 11)
@@ -22,17 +26,22 @@ target_include_directories(SpotGridBot PRIVATE
         )
 
 target_link_libraries(SpotGridBot PUBLIC
-                        PocoFoundation
-                        PocoUtil
-                        PocoNet
-                        PocoNetSSL
-                        PocoJSON
-                        PocoData
+                        Poco::Foundation
+                        Poco::Util
+                        Poco::Net
+                        Poco::NetSSL
+                        Poco::JSON
+                        Poco::Data
+                        Poco::Crypto
+                        OpenSSL::SSL
+                        OpenSSL::Crypto
+                        jwt-cpp::jwt-cpp
+                        nlohmann_json::nlohmann_json
                         protobuf
                         crypto
-                        ${Utils_BINARY_DIR}/libUtils.so
-                        ${OrderBook_BINARY_DIR}/libOrderBook.so
-                        ${GridBot_BINARY_DIR}/libGridBot.so
+                        Utils
+                        OrderBook
+                        GridBot
                         )
 
 install(TARGETS SpotGridBot DESTINATION bin)

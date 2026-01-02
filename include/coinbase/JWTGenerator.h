@@ -8,40 +8,69 @@
 #include <string>
 #include <jwt-cpp/jwt.h>
 #include <openssl/rand.h>
+#include <Poco/String.h>
+#include <Poco/UUIDGenerator.h>
 
 namespace UTILS {
 
-        std::string create_jwt(
+        // Helper: Convert XML escape sequences to actual newlines
+        inline std::string process_pem_key(const std::string& raw_key) {
+            std::string result = raw_key;
+            // Replace literal \n strings with actual newlines
+            size_t pos = 0;
+            while ((pos = result.find("\\n", pos)) != std::string::npos) {
+                result.replace(pos, 2, "\n");
+                pos += 1;
+            }
+            return Poco::trim(result);
+        }
+
+        inline std::string create_jwt(
             const std::string& api_key,
-            const std::string& ec_private_key_pem
+            const std::string& ec_private_key_pem,
+            const std::string& request_method = "",
+            const std::string& request_host_path = ""
         ) {
             using clock = std::chrono::system_clock;
 
             auto now = clock::now();
 
             // Coinbase wants SHORT lived tokens
-            auto exp = now + std::chrono::seconds{30};
+            auto exp = now + std::chrono::seconds{120};
 
-            // Generate random nonce (binary-safe → base64)
-            std::array<unsigned char, 16> nonce_raw{};
-            RAND_bytes(nonce_raw.data(), nonce_raw.size());
+            // Generate random nonce (UUID string)
+            std::string nonce = Poco::UUIDGenerator::defaultGenerator().createRandom().toString();
 
-            std::ostringstream oss;
-            for (auto b : nonce_raw)
-                oss << std::hex << std::setw(2) << std::setfill('0') << (int)b;
+            // Process PEM key to handle XML escape sequences
+            std::string processed_key = process_pem_key(ec_private_key_pem);
 
-            std::string nonce = oss.str();
-
-            auto token = jwt::create()
-                .set_issuer("coinbase-cloud")          // ✅ REQUIRED
+            auto builder = jwt::create()
+                .set_issuer("cdp")          // ✅ REQUIRED - must be "cdp" not "coinbase"
                 .set_subject(api_key)                  // org/.../apiKeys/...
                 .set_not_before(now)                   // numeric nbf
                 .set_expires_at(exp)                   // numeric exp
                 .set_header_claim("kid", jwt::claim(api_key))
-                .set_header_claim("nonce", jwt::claim(nonce))
-                .sign(jwt::algorithm::es256(
+                .set_header_claim("nonce", jwt::claim(nonce));
+
+            // For REST API, add URI claim
+            // Format: "METHOD hostname/path" (e.g., "GET api.coinbase.com/api/v3/brokerage/accounts")
+            if (!request_host_path.empty())
+            {
+                std::string uri;
+                if (!request_method.empty())
+                {
+                    uri = request_method + " " + request_host_path;
+                }
+                else
+                {
+                    uri = request_host_path;  // Already formatted
+                }
+                builder.set_payload_claim("uri", jwt::claim(uri));
+            }
+
+            auto token = builder.sign(jwt::algorithm::es256(
                     "",                                // public key not needed
-                    ec_private_key_pem,                // EC private key
+                    processed_key,                     // EC private key (with actual newlines)
                     "", ""
                 ));
 

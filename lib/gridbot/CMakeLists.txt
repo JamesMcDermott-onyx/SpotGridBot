@@ -12,4 +12,9 @@ add_library(GridBot SHARED ${SOURCE_FILES})
 
 target_include_directories(GridBot PUBLIC ${GridBot_SOURCE_DIR}/include)
 
+target_link_libraries(GridBot PUBLIC
+        Poco::Foundation
+        Utils
+)
+
 #add_subdirectory(tests)

@@ -44,8 +44,10 @@ namespace STRATEGY {
     // Loop over all active orders we’re tracking
     for (auto &orderId : m_activeOrders)
     {
-        // Query the exchange/order manager for the latest status of this order
-        auto maybe = m_orderManager->GetOrder(m_cp, orderId);
+        // Get the locally cached order status (updated by WebSocket push notifications)
+        // Note: With WebSocket connections, order status is pushed to OrderManager automatically,
+        // so we don't need to query the exchange - just read the cached state
+        auto maybe = m_orderManager->GetOrderLocal(orderId);
         if (!maybe) {
             continue; // If no data (order not found), skip
         }
@@ -75,6 +77,10 @@ namespace STRATEGY {
                     // Track the new order
                     m_activeOrders.push_back(newId);
                     m_orderDetails[newId] = {UTILS::Side::SELL, sellPrice, m_orderDetails[orderId].qty};
+                    
+                    // Log the fill and expected profit
+                    double profit = m_orderDetails[orderId].price * m_cfg.m_stepPercent * m_orderDetails[orderId].qty;
+                    poco_information_f4(logger(), "BUY order %s filled at %f, placed hedge SELL at %f, expected profit %f", orderId.c_str(), m_orderDetails[orderId].price, sellPrice, profit);
                 }
             }
             else // It was a SELL order
@@ -94,6 +100,10 @@ namespace STRATEGY {
                     string newId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::BUY, buyPrice, m_orderDetails[orderId].qty);
                     m_activeOrders.push_back(newId);
                     m_orderDetails[newId] = {UTILS::Side::BUY, buyPrice, m_orderDetails[orderId].qty};
+                    
+                    // Log the fill and expected profit
+                    double profit = m_orderDetails[orderId].price * m_cfg.m_stepPercent * m_orderDetails[orderId].qty;
+                    poco_information_f4(logger(), "SELL order %s filled at %f, placed hedge BUY at %f, expected profit %f", orderId.c_str(), m_orderDetails[orderId].price, buyPrice, profit);
                 }
             }
             // Mark the filled order for removal
@@ -128,8 +138,10 @@ namespace STRATEGY {
                     {
                         string newId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::SELL, sellPrice, delta);
                         m_activeOrders.push_back(newId);
-                        m_orderDetails[newId] = {UTILS::Side::SELL, sellPrice, delta};
-                    }
+                        m_orderDetails[newId] = {UTILS::Side::SELL, sellPrice, delta};                        
+                        // Log the partial fill and expected profit
+                        double profit = m_orderDetails[orderId].price * m_cfg.m_stepPercent * delta;
+                        poco_information_f4(logger(), "Partial BUY fill %s delta=%f, placed hedge SELL at %f, expected profit %f", orderId.c_str(), delta, sellPrice, profit);                    }
                     else
                     {
                         poco_warning(logger(), "Exceeded max position - not placing sell order");
@@ -146,6 +158,10 @@ namespace STRATEGY {
                         string newId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::BUY, buyPrice, delta);
                         m_activeOrders.push_back(newId);
                         m_orderDetails[newId] = {UTILS::Side::BUY, buyPrice, delta};
+                        
+                        // Log the partial fill and expected profit
+                        double profit = m_orderDetails[orderId].price * m_cfg.m_stepPercent * delta;
+                        poco_information_f4(logger(), "Partial SELL fill %s delta=%f, placed hedge BUY at %f, expected profit %f", orderId.c_str(), delta, buyPrice, profit);
                     }
                 }
             }

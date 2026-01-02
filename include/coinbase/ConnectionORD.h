@@ -2,6 +2,7 @@
 
 #include "RestConnectionBase.h"
 #include "JSONDocument.h"
+#include <string>
 
 namespace CORE {
 	class ConnectionManager;
@@ -19,11 +20,18 @@ namespace COINBASE {
 /*! \brief OKX connection class */
 ////////////////////////////////////////////////////////////////////////////
 class ConnectionORD : public CORE::RESTAPI::RestConnectionBase
+	// Pretty print the products list from Coinbase
 {
 public:
 	ConnectionORD(const CRYPTO::Settings &settings, const std::string &loggingPropsPath, const ConnectionManager& connectionManager);
 
+	// List all available products from Coinbase
+	void PrettyPrintProducts(const std::string& productsJson);
+	std::string ListProducts();
+	std::string GetProductDetails(const std::string& productId);
+
 	std::string GetOrders();
+	std::string GetAccounts();
 	
 	std::string SendOrder(const UTILS::CurrencyPair &instrument, const UTILS::Side side, const RESTAPI::EOrderType orderType,
 						  const UTILS::TimeInForce timeInForce, const double price, const double quantity,
@@ -35,11 +43,22 @@ public:
 	std::string CancelOrder(const UTILS::CurrencyPair &instrument, const std::string &orderId,
 							const std::optional<std::string> &origClientOrderId = std::nullopt);
 
+	std::string SendTestLimitOrder();
+
 	TExecutionReports TranslateOrderResult(const std::shared_ptr<CRYPTO::JSONDocument> jd) const override;
 	
 	TExecutionReports TranslateOrder(const std::shared_ptr<CRYPTO::JSONDocument> jd, Poco::Logger *logger = nullptr) const override;
 
 	static std::tuple<char, char> TranslateOrderStatus(const std::string &status);
+
+	// Override to convert "BTC/USDC" to "BTC-USDC" for Coinbase REST API
+	std::string TranslateSymbolToExchangeSpecific(const std::string &symbol) const {
+		std::string s = symbol;
+		for (auto &c : s) {
+			if (c == '/') c = '-';
+		}
+		return s;
+	}
 
 protected:
 	const CRYPTO::AuthHeader GetAuthHeader(const std::string& requestPath, const std::string& accessMethod);

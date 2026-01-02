@@ -15,7 +15,7 @@ namespace BINANCE {
 
 //------------------------------------------------------------------------------
 ConnectionMD::ConnectionMD(const CRYPTO::Settings &settings, const std::string &loggingPropsPath, const ConnectionManager& connectionManager)
-		: CORE::CRYPTO::ConnectionBase(settings, loggingPropsPath, settings.m_name, connectionManager)
+		: CORE::CRYPTO::ConnectionBaseMD(settings, loggingPropsPath, settings.m_name, connectionManager)
 {
 	m_connectionSS = std::make_unique<CORE::BINANCE::ConnectionSS>("ConnectionSS");
 	

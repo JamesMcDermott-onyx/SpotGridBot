@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Definitions.h"
-#include "ConnectionBase.h"
+#include "ConnectionBaseMD.h"
 #include "JSONDocument.h"
 #include "binance/ConnectionSS.h"
 
@@ -15,7 +15,7 @@ const std::string MSGTYPE_DepthNUpdate = "depthNUpdate"; // the top 'n' depth
 ////////////////////////////////////////////////////////////////////////////
 /*! \brief Binance connection class */
 ////////////////////////////////////////////////////////////////////////////
-class ConnectionMD : public CORE::CRYPTO::ConnectionBase
+class ConnectionMD : public CORE::CRYPTO::ConnectionBaseMD
 {
 public:
 	ConnectionMD(const CRYPTO::Settings &settings, const std::string &loggingPropsPath, const ConnectionManager& connectionManager);

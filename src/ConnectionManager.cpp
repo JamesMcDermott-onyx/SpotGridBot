@@ -21,6 +21,7 @@
 #include "binance/ConnectionORD.h"
 #include "coinbase/ConnectionMD.h"
 #include "coinbase/ConnectionORD.h"
+#include "coinbase/ConnectionORDWS.h"
 #include "OKX/ConnectionMD.h"
 #include "OKX/ConnectionORD.h"
 #include "SchemaDefs.h"
@@ -37,6 +38,7 @@ ConnectionManager::ConnectionManager(const std::string& configPath, const std::s
 	RegisterConnectionCreator<BINANCE::ConnectionORD>(BINANCE::SCHEMAORD);
 	RegisterConnectionCreator<COINBASE::ConnectionMD>(COINBASE::SCHEMAMD);
 	RegisterConnectionCreator<COINBASE::ConnectionORD>(COINBASE::SCHEMAORD);
+	RegisterConnectionCreator<COINBASE::ConnectionORDWS>(COINBASE::SCHEMAORDWS);
 	RegisterConnectionCreator<OKX::ConnectionMD>(OKX::SCHEMAMD);
 	RegisterConnectionCreator<OKX::ConnectionORD>(OKX::SCHEMAORD);
 
@@ -59,8 +61,16 @@ void ConnectionManager::CreateSession(int64_t numId)
 
 	m_connections.emplace( m_settingsCollection[numId].m_name, creator(m_settingsCollection[numId]) );
 
-	if ( m_settingsCollection[numId].m_schema.find(":ORD") !=std::string::npos ) {
+	// Set order connection only for REST order schemas (ending with ":ORD", not ":ORDWS")
+	auto& schema = m_settingsCollection[numId].m_schema;
+	if ( schema.find(":ORD") != std::string::npos && schema.find(":ORDWS") == std::string::npos ) {
 		m_orderConnection = m_settingsCollection[numId].m_name;
+		poco_information_f2(logger(), "Session '%s' configured for REST orders (schema: %s)", 
+			m_settingsCollection[numId].m_name, schema);
+	}
+	else if ( schema.find(":ORDWS") != std::string::npos ) {
+		poco_information_f2(logger(), "Session '%s' configured for WebSocket orders (schema: %s)", 
+			m_settingsCollection[numId].m_name, schema);
 	}
 }
 
@@ -71,6 +81,7 @@ void ConnectionManager::Connect()
 		auto conn = *iter;
 		if (conn.second->Connect() )
 		{
+			conn.second->Start();  // Start the connection (sends subscriptions for MD connections)
 			poco_information_f1(logger(), "Connected session [%s] ", conn.first );
 		}
 		else
@@ -138,6 +149,27 @@ bool ConnectionManager::LoadConfig(const UTILS::XmlDocPtr &pDoc)
 							settings.m_passphrase = UTILS::GetXmlAttribute(childNode, CRYPTO::ATTR_PASSPHRASE, "");
 							settings.m_schema = UTILS::GetXmlAttribute(childNode, CRYPTO::ATTR_SCHEMA, "");
 							settings.m_instruments = UTILS::GetXmlAttribute(childNode, CRYPTO::ATTR_INSTRUMENTS, "");
+							
+							// Adjust schema based on protocol for order connections
+							// This enables switching between REST and WebSocket for the same exchange
+							if (settings.m_schema.find(":ORD") != std::string::npos)
+							{
+								if (settings.m_schema.find("Coinbase") != std::string::npos)
+								{
+									if (settings.m_protocol == "ws")
+									{
+										settings.m_schema = COINBASE::SCHEMAORDWS;
+										poco_information_f2(logger(), "Session '%s' configured for WebSocket orders (schema: %s)", 
+											settings.m_name, settings.m_schema);
+									}
+									else
+									{
+										settings.m_schema = COINBASE::SCHEMAORD;
+										poco_information_f2(logger(), "Session '%s' configured for REST orders (schema: %s)", 
+											settings.m_name, settings.m_schema);
+									}
+								}
+							}
 							
 							// Load parameters
 							if (auto *paramNodes = childNode->childNodes())
