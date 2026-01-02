@@ -11,28 +11,134 @@
 
 using namespace std;
 namespace STRATEGY {
+  void GridStrategy::LoadExistingOrders()
+  {
+    poco_information(logger(), "Loading existing orders from exchange...");
+    
+    // Get all orders that were synced from the exchange
+    auto allOrders = m_orderManager->GetAllOrders();
+    
+    for (const auto& [orderId, order] : allOrders)
+    {
+      // Only track NEW (OPEN) orders that match our instrument
+      if (order.status == CORE::OrderStatus::NEW)
+      {
+        m_activeOrders.push_back(orderId);
+        m_orderDetails[orderId] = {order.side, order.price, order.quantity};
+        
+        poco_information_f4(logger(), "Loaded order %s: %s @ %f qty=%f", 
+                           orderId.c_str(),
+                           order.side == UTILS::Side::BUY ? "BUY" : "SELL",
+                           order.price,
+                           order.quantity);
+      }
+    }
+    
+    poco_information_f1(logger(), "Loaded %s existing orders into strategy", to_string(m_activeOrders.size()));
+  }
+
   void GridStrategy::Start()
   {
     double base = m_cfg.m_basePrice;
     double step = m_cfg.m_stepPercent;
+    double tolerance = 0.01; // 1% price tolerance for matching existing orders
+
+    // If base_price is 0, fetch current market price dynamically
+    if (base == 0.0)
+    {
+      poco_information(logger(), "Base price is 0 - fetching current market price...");
+      base = m_orderManager->GetCurrentMarketPrice(m_cp);
+      
+      if (base == 0.0)
+      {
+        poco_error(logger(), "Failed to fetch current market price - cannot place orders!");
+        return;
+      }
+      
+      poco_information_f1(logger(), "Using dynamic base price: %f", base);
+    }
+
+    // Build a map of expected grid prices
+    std::map<double, bool> expectedBuyLevels;
+    std::map<double, bool> expectedSellLevels;
 
     for (int i=1;i<=m_cfg.m_levelsBelow;i++)
     {
       double price = base * (1.0 - step * i);
-      string orderId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::BUY, price, m_cfg.m_percentOrderQty);
-      m_activeOrders.push_back(orderId);
-      m_orderDetails[orderId] = {UTILS::Side::BUY, price, m_cfg.m_percentOrderQty};
+      expectedBuyLevels[price] = false; // not yet placed
     }
 
     for (int i=1;i<=m_cfg.m_levelsAbove;i++)
     {
       double price = base * (1.0 + step * i);
-      string orderId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::SELL, price, m_cfg.m_percentOrderQty);
-      m_activeOrders.push_back(orderId);
-      m_orderDetails[orderId] = {UTILS::Side::SELL, price, m_cfg.m_percentOrderQty};
+      expectedSellLevels[price] = false; // not yet placed
     }
 
-    poco_information_f1(logger(), "Initial grid placed: %s orders", to_string(m_activeOrders.size()));
+    // Check if we already have orders tracked (from previous session or WebSocket sync)
+    for (const auto& orderId : m_activeOrders)
+    {
+      if (m_orderDetails.find(orderId) != m_orderDetails.end())
+      {
+        const auto& details = m_orderDetails[orderId];
+        
+        // Check if this matches a BUY grid level
+        if (details.side == UTILS::Side::BUY)
+        {
+          for (auto& [expectedPrice, placed] : expectedBuyLevels)
+          {
+            if (abs(details.price - expectedPrice) / expectedPrice < tolerance)
+            {
+              placed = true;
+              poco_information_f2(logger(), "Found existing BUY order %s at %f", orderId.c_str(), details.price);
+              break;
+            }
+          }
+        }
+        // Check if this matches a SELL grid level
+        else if (details.side == UTILS::Side::SELL)
+        {
+          for (auto& [expectedPrice, placed] : expectedSellLevels)
+          {
+            if (abs(details.price - expectedPrice) / expectedPrice < tolerance)
+            {
+              placed = true;
+              poco_information_f2(logger(), "Found existing SELL order %s at %f", orderId.c_str(), details.price);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Place missing BUY orders
+    int newOrdersPlaced = 0;
+    for (const auto& [price, placed] : expectedBuyLevels)
+    {
+      if (!placed)
+      {
+        string orderId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::BUY, price, m_cfg.m_percentOrderQty);
+        m_activeOrders.push_back(orderId);
+        m_orderDetails[orderId] = {UTILS::Side::BUY, price, m_cfg.m_percentOrderQty};
+        newOrdersPlaced++;
+        poco_information_f2(logger(), "Placed new BUY order %s at %f", orderId, price);
+      }
+    }
+
+    // Place missing SELL orders
+    for (const auto& [price, placed] : expectedSellLevels)
+    {
+      if (!placed)
+      {
+        string orderId = m_orderManager->PlaceLimitOrder(m_cp, UTILS::Side::SELL, price, m_cfg.m_percentOrderQty);
+        m_activeOrders.push_back(orderId);
+        m_orderDetails[orderId] = {UTILS::Side::SELL, price, m_cfg.m_percentOrderQty};
+        newOrdersPlaced++;
+        poco_information_f2(logger(), "Placed new SELL order %s at %f", orderId, price);
+      }
+    }
+
+    poco_information_f3(logger(), "Grid initialization complete: %s existing orders, %s new orders placed, %s total", 
+                       to_string(m_activeOrders.size() - newOrdersPlaced), to_string(newOrdersPlaced), to_string(m_activeOrders.size()));
   }
 
   void GridStrategy::CheckFilledOrders()

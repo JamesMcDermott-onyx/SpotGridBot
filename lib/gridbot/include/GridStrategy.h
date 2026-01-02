@@ -24,6 +24,7 @@ namespace STRATEGY {
     ~GridStrategy() = default;
 
     void Start();
+    void LoadExistingOrders();
     void CheckFilledOrders();
     void PrintStatus();
 

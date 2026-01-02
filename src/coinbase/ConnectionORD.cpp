@@ -52,6 +52,33 @@ std::string ConnectionORD::GetProductDetails(const std::string& productId)
 
 	return msg;
 }
+
+double ConnectionORD::GetCurrentPrice(const std::string& productId)
+{
+	try
+	{
+		std::string details = GetProductDetails(productId);
+		auto jd = std::make_shared<CRYPTO::JSONDocument>(details);
+		
+		// Coinbase product details contains "price" field with current market price
+		if (jd->GetValue<std::string>("price") != "")
+		{
+			double price = std::stod(jd->GetValue<std::string>("price"));
+			poco_information_f2(logger(), "Current market price for %s: %f", productId, price);
+			return price;
+		}
+		else
+		{
+			poco_error_f1(logger(), "No price field in product details for %s", productId);
+			return 0.0;
+		}
+	}
+	catch (const std::exception& e)
+	{
+		poco_error_f2(logger(), "Failed to get current price for %s: %s", productId, std::string(e.what()));
+		return 0.0;
+	}
+}
 // Pretty print the products list from Coinbase
 void ConnectionORD::PrettyPrintProducts(const std::string& productsJson)
 {
@@ -255,6 +282,25 @@ std::string ConnectionORD::GetOrders()
 }
 
 //------------------------------------------------------------------------------
+std::string ConnectionORD::GetOpenOrders(const std::string& productId)
+{
+	std::string requestPath = "orders/historical/batch?order_status=OPEN";
+	if (!productId.empty()) {
+		requestPath += "&product_id=" + productId;
+	}
+	
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "GET");
+
+	return DoWebRequest(m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_GET, [&](std::string &path)
+	{
+	}, [&](Poco::Net::HTTPRequest &request)
+						{
+							request.add("content-type", "application/json");
+							request.add("Authorization", "Bearer " + std::get<CB_ACCESS_SIGN>(header));
+						});
+}
+
+//------------------------------------------------------------------------------
 std::string ConnectionORD::GetAccounts()
 {
 	const std::string requestPath("accounts");
@@ -288,9 +334,9 @@ std::string ConnectionORD::SendOrder(const UTILS::CurrencyPair &instrument, cons
 	body+=",\"order_configuration\":{";
 	body+=timeInForce==UTILS::TimeInForce::GTC ? "\"limit_limit_gtc\":{" : "\"limit_limit_ioc\":{";
 	body+="\"limit_price\":";
-	body+="\""+std::to_string(price)+"\"";
+	body+="\""+UTILS::to_string_with_precision<double>(price, instrument.Precision())+"\"";
 	body+=",\"base_size\":";
-	body+="\""+std::to_string(quantity)+"\"";
+	body+="\""+UTILS::to_string_with_precision<double>(quantity, 8)+"\"";
 	body+=",\"post_only\":false";
 	body+="}}}";
 
