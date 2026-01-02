@@ -252,23 +252,23 @@ std::string ConnectionORDWS::SendOrder(const UTILS::CurrencyPair &instrument, co
 		if (timeInForce == UTILS::TimeInForce::GTC)
 		{
 			order_config["limit_limit_gtc"] = {
-				{"base_size", std::to_string(quantity)},
-				{"limit_price", std::to_string(price)},
+				{"base_size", UTILS::to_string_with_precision<double>(quantity, 8)},
+				{"limit_price", UTILS::to_string_with_precision<double>(price, instrument.Precision())},
 				{"post_only", false}
 			};
 		}
 		else // IOC
 		{
 			order_config["limit_limit_gtc"] = {
-				{"base_size", std::to_string(quantity)},
-				{"limit_price", std::to_string(price)}
+				{"base_size", UTILS::to_string_with_precision<double>(quantity, 8)},
+				{"limit_price", UTILS::to_string_with_precision<double>(price, instrument.Precision())}
 			};
 		}
 	}
 	else // Market order
 	{
 		order_config["market_market_ioc"] = {
-			{"base_size", std::to_string(quantity)}
+			{"base_size", UTILS::to_string_with_precision<double>(quantity, 8)}
 		};
 	}
 

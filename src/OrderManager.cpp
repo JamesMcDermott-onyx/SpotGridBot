@@ -279,6 +279,122 @@ namespace CORE {
         }
     }
 
+    void OrderManager::LoadOpenOrders(const UTILS::CurrencyPair &cp)
+    {
+        auto connection = m_connectionManager->OrderConnection();
+        if (!connection)
+        {
+            poco_error(logger(), "Order connection is null - cannot load open orders!");
+            return;
+        }
+
+        // Try to use REST connection to get open orders
+        if (auto restConn = std::dynamic_pointer_cast<COINBASE::ConnectionORD>(connection))
+        {
+            try
+            {
+                std::string productId = restConn->TranslateSymbolToExchangeSpecific(cp.ToString());
+                std::string ordersJson = restConn->GetOpenOrders(productId);
+                
+                poco_information_f1(logger(), "LoadOpenOrders response: %s", ordersJson);
+                
+                // Parse the JSON response
+                auto jd = std::make_shared<CRYPTO::JSONDocument>(ordersJson);
+                auto ordersArray = jd->GetArray("orders");
+                
+                if (ordersArray && ordersArray->size() > 0)
+                {
+                    int loadedCount = 0;
+                    
+                    for (size_t i = 0; i < ordersArray->size(); i++)
+                    {
+                        auto orderObj = ordersArray->getObject(i);
+                        if (orderObj)
+                        {
+                            std::string orderId = orderObj->getValue<std::string>("order_id");
+                            std::string side = orderObj->getValue<std::string>("side");
+                            std::string status = orderObj->getValue<std::string>("status");
+                            
+                            // Get order configuration to extract price and size
+                            if (orderObj->has("order_configuration"))
+                            {
+                                auto config = orderObj->getObject("order_configuration");
+                                
+                                double price = 0.0;
+                                double quantity = 0.0;
+                                
+                                // Extract from limit_limit_gtc or other order types
+                                if (config && config->has("limit_limit_gtc"))
+                                {
+                                    auto limitConfig = config->getObject("limit_limit_gtc");
+                                    if (limitConfig)
+                                    {
+                                        price = std::stod(limitConfig->getValue<std::string>("limit_price"));
+                                        quantity = std::stod(limitConfig->getValue<std::string>("base_size"));
+                                    }
+                                }
+                                
+                                if (price > 0 && quantity > 0)
+                                {
+                                    UTILS::Side orderSide = (side == "BUY") ? UTILS::Side::BUY : UTILS::Side::SELL;
+                                    OrderStatus orderStatus = OrderStatus::NEW;
+                                    
+                                    if (status == "OPEN") orderStatus = OrderStatus::NEW;
+                                    else if (status == "FILLED") orderStatus = OrderStatus::FILLED;
+                                    else if (status == "CANCELLED") orderStatus = OrderStatus::CANCELED;
+                                    
+                                    // Only sync OPEN orders
+                                    if (orderStatus == OrderStatus::NEW)
+                                    {
+                                        SyncOrder(orderId, orderSide, price, quantity, orderStatus, 0.0);
+                                        loadedCount++;
+                                        poco_information_f4(logger(), "Loaded existing order: %s %s @ %f qty=%f", 
+                                                           orderId, side, price, quantity);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    poco_information_f1(logger(), "Loaded %s open orders from exchange", std::to_string(loadedCount));
+                }
+                else
+                {
+                    poco_information(logger(), "No open orders found on exchange");
+                }
+            }
+            catch (std::exception &e)
+            {
+                poco_error_f1(logger(), "Failed to load open orders: %s", std::string(e.what()));
+            }
+        }
+        else
+        {
+            poco_warning(logger(), "LoadOpenOrders: Not a REST connection - cannot query open orders");
+        }
+    }
+
+    double OrderManager::GetCurrentMarketPrice(const UTILS::CurrencyPair &cp)
+    {
+        auto connection = m_connectionManager->OrderConnection();
+        if (!connection)
+        {
+            poco_error(logger(), "Order connection is null - cannot get current price!");
+            return 0.0;
+        }
+
+        if (auto restConn = std::dynamic_pointer_cast<COINBASE::ConnectionORD>(connection))
+        {
+            std::string productId = restConn->TranslateSymbolToExchangeSpecific(cp.ToString());
+            return restConn->GetCurrentPrice(productId);
+        }
+        else
+        {
+            poco_warning(logger(), "GetCurrentMarketPrice: Not a Coinbase REST connection");
+            return 0.0;
+        }
+    }
+
     void OrderManager::PrintBalances(UTILS::CurrencyPair cp)
     {
         std::lock_guard<std::mutex> g(m_mutex);

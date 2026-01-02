@@ -26,9 +26,9 @@
 
     <PipFactors precision="8" pip="100000">
         <CurrencyPair base="ADA" quote="USDT"  pip="10000" />
-        <CurrencyPair base="BTC" quote="USD"  pip="100"/>
-        <CurrencyPair base="BTC" quote="USDT"  pip="100"/>
-        <CurrencyPair base="BTC" quote="USDC"  pip="100"/>
+        <CurrencyPair base="BTC" quote="USD"  pip="100" precision="2"/>
+        <CurrencyPair base="BTC" quote="USDT"  pip="100" precision="2"/>
+        <CurrencyPair base="BTC" quote="USDC"  pip="100" precision="2"/>
         <CurrencyPair base="BNB" quote="USDT"  pip="100"/>
         <CurrencyPair base="ETH" quote="USD"  pip="100" precision="2"/>
         <CurrencyPair base="ETH" quote="BTC"  pip="1000" precision="5"/>

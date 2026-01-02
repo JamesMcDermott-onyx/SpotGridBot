@@ -53,6 +53,12 @@ int main(int argc, char** argv)
         m_orderManager->InitializeBalances();
         m_orderManager->PrintAllBalances();
 
+        // Load existing open orders from exchange
+        m_orderManager->LoadOpenOrders(UTILS::CurrencyPair("BTC/USDC"));
+        
+        // Load existing orders into strategy before starting
+        strat.LoadExistingOrders();
+
         // List all available products from Coinbase
         // auto restConn = std::dynamic_pointer_cast<COINBASE::ConnectionORD>(m_connectionManager->OrderConnection());
         // if (restConn) {

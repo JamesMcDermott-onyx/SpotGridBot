@@ -29,8 +29,10 @@ public:
 	void PrettyPrintProducts(const std::string& productsJson);
 	std::string ListProducts();
 	std::string GetProductDetails(const std::string& productId);
+	double GetCurrentPrice(const std::string& productId);
 
 	std::string GetOrders();
+	std::string GetOpenOrders(const std::string& productId = "");
 	std::string GetAccounts();
 	
 	std::string SendOrder(const UTILS::CurrencyPair &instrument, const UTILS::Side side, const RESTAPI::EOrderType orderType,

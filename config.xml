@@ -1,13 +1,14 @@
 <Configuration>
 
+<!-- base_price=0 means use current market price as base price -->
     <GridConfig
         instrument="BTC/USDC"
-        base_price="95000.0"
-        levels_below="2"
-        levels_above="2"
-        step_percent="0.005"
-        percent_order_qty="0.001"
-        max_position="2.0"
+        base_price="0" 
+        levels_above="5"
+        levels_below="6"
+        step_percent="0.010"
+        percent_order_qty="0.0003"
+        max_position="0.0038"
     />
 
     <SessionConfig>

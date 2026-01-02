@@ -50,6 +50,12 @@ namespace CORE {
     // Sync order from external source (e.g., startup snapshot) - creates or updates order in cache
     virtual void SyncOrder(const std::string &orderId, UTILS::Side side, double price, double quantity, OrderStatus status, double filled)=0;
     
+    // Get all cached orders (for startup sync)
+    virtual std::unordered_map<std::string, Order> GetAllOrders() const = 0;
+    
+    // Get current market price for a currency pair
+    virtual double GetCurrentMarketPrice(const UTILS::CurrencyPair &cp) = 0;
+    
     virtual double GetBalance(const UTILS::Currency& currency)=0;
     virtual void SetBalance(const UTILS::Currency &currency, double balance)=0;
     virtual void PrintBalances(const UTILS::CurrencyPair cp)=0;

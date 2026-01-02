@@ -33,16 +33,21 @@ namespace CORE {
     // Sync order from external source (e.g., startup snapshot) - creates or updates order in cache
     void SyncOrder(const std::string &orderId, UTILS::Side side, double price, double quantity, OrderStatus status, double filled);
     
+    // Get all cached orders (for startup sync)
+    std::unordered_map<std::string, Order> GetAllOrders() const { std::lock_guard<std::mutex> lock(m_mutex); return m_orders; }
+    
     double GetBalance(const UTILS::Currency &currency);
     void SetBalance(const UTILS::Currency &currency, double balance);
     void InitializeBalances();
+    void LoadOpenOrders(const UTILS::CurrencyPair &cp);
+    double GetCurrentMarketPrice(const UTILS::CurrencyPair &cp);
     void PrintBalances(UTILS::CurrencyPair cp);
     void PrintAllBalances();
 
     std::shared_ptr<CORE::ConnectionManager> GetConnectionManager() { return m_connectionManager; }
 
   private:
-    std::mutex m_mutex;
+    mutable std::mutex m_mutex;
     std::unordered_map<std::string,Order> m_orders;
 
     std::unordered_map<UTILS::Currency, double> m_balance; //the balance of currencies
