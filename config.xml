@@ -2,7 +2,7 @@
 
 <!-- base_price=0 means use current market price as base price -->
     <GridBots>
-        <GridConfig name="BTC_Grid"
+        <GridConfig name="BTCUSDC_Grid"
             instrument="BTC/USDC"
             base_price="0" 
             levels_above="5"
@@ -10,15 +10,27 @@
             step_percent="0.010"
             percent_order_qty="0.0003"
             max_position="0.0038"
+            create_position="true"
         />
-        <GridConfig name="ETH_Grid"
+        <GridConfig name="ETHUSDC_Grid"
             instrument="ETH/USDC"
             base_price="0" 
-            levels_above="5"
-            levels_below="6"
-            step_percent="0.010"
-            percent_order_qty="0.005"
-            max_position="0.05"
+            levels_above="8"
+            levels_below="8"
+            step_percent="0.0128"
+            percent_order_qty="0.0075"
+            max_position="0.07"
+            create_position="true"
+        />
+        <GridConfig name="ETHBTC_Grid"
+            instrument="ETH/BTC"
+            base_price="0" 
+            levels_above="9"
+            levels_below="9"
+            step_percent="0.0064"
+            percent_order_qty="0.008"
+            max_position="0.09"
+            create_position="true"
         />
     </GridBots>
 
