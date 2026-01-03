@@ -14,6 +14,7 @@ const std::string ATTR_LEVELS_ABOVE = "levels_above";
 const std::string ATTR_STEP_PERCENT = "step_percent";
 const std::string ATTR_PERCENT_ORDER_QTY = "percent_order_qty";
 const std::string ATTR_MAX_POSITION = "max_position";
+const std::string ATTR_CREATE_POSITION = "create_position";
 
 const std::string TAG_SESSION_CONFIG = "SessionConfig";
 const std::string TAG_SESSION = "Session";
@@ -60,8 +61,7 @@ bool GridConfig::LoadConfig(const UTILS::XmlDocPtr &pDoc)
 	 						std::string levelsAboveStr = UTILS::GetXmlAttribute(gridNode, ATTR_LEVELS_ABOVE, "0");
 	 						std::string stepPercentStr = UTILS::GetXmlAttribute(gridNode, ATTR_STEP_PERCENT, "0.0");
 	 						std::string percentOrderQtyStr = UTILS::GetXmlAttribute(gridNode, ATTR_PERCENT_ORDER_QTY, "0.0");
-	 						std::string maxPositionStr = UTILS::GetXmlAttribute(gridNode, ATTR_MAX_POSITION, "0.0");
-	 						
+	 						std::string maxPositionStr = UTILS::GetXmlAttribute(gridNode, ATTR_MAX_POSITION, "0.0");	 					std::string createPositionStr = UTILS::GetXmlAttribute(gridNode, ATTR_CREATE_POSITION, "true");	 						
 	 						cfg.basePrice = std::stod(basePriceStr);
 	 						cfg.levelsBelow = std::stoi(levelsBelowStr);
 	 						cfg.levelsAbove = std::stoi(levelsAboveStr);
@@ -101,6 +101,7 @@ bool GridConfig::LoadConfig(const UTILS::XmlDocPtr &pDoc)
 	 		std::string stepPercentStr = UTILS::GetXmlAttribute(baseNode, ATTR_STEP_PERCENT, "0.0");
 	 		std::string percentOrderQtyStr = UTILS::GetXmlAttribute(baseNode, ATTR_PERCENT_ORDER_QTY, "0.0");
 	 		std::string maxPositionStr = UTILS::GetXmlAttribute(baseNode, ATTR_MAX_POSITION, "0.0");
+	 		std::string createPositionStr = UTILS::GetXmlAttribute(baseNode, ATTR_CREATE_POSITION, "true");
 	 		
 	 		cfg.basePrice = std::stod(basePriceStr);
 	 		cfg.levelsBelow = std::stoi(levelsBelowStr);
@@ -108,6 +109,7 @@ bool GridConfig::LoadConfig(const UTILS::XmlDocPtr &pDoc)
 	 		cfg.stepPercent = std::stod(stepPercentStr);
 	 		cfg.percentOrderQty = std::stod(percentOrderQtyStr);
 	 		cfg.maxPosition = std::stod(maxPositionStr);
+	 		cfg.createPosition = (createPositionStr == "true");
 	 		
 	 		m_gridConfigs.push_back(cfg);
 	 		

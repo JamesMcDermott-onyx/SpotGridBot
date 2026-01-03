@@ -18,6 +18,7 @@ struct GridConfigData {
     double stepPercent;
     double percentOrderQty;
     double maxPosition;
+    bool createPosition;
 };
 
 class GridConfig : public UTILS::Logging, public UTILS::ErrorHandler {

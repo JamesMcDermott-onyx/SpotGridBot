@@ -50,6 +50,13 @@ namespace STRATEGY {
 
   void GridBot::Start()
   {
+    // If create_position is false, skip placing new orders (intra-day restart)
+    if (!m_cfg.createPosition)
+    {
+      poco_information(m_logger, "create_position=false, skipping new order placement (using existing orders only)");
+      return;
+    }
+    
     double base = m_cfg.basePrice;
     double step = m_cfg.stepPercent;
     double tolerance = 0.01; // 1% price tolerance for matching existing orders
