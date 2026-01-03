@@ -284,12 +284,16 @@ std::string ConnectionORD::GetOrders()
 //------------------------------------------------------------------------------
 std::string ConnectionORD::GetOpenOrders(const std::string& productId)
 {
+	// For JWT signing, use only the path without query parameters
+	std::string requestPathForAuth = "orders/historical/batch";
+	
+	// For the actual HTTP request, include the query parameters
 	std::string requestPath = "orders/historical/batch?order_status=OPEN";
 	if (!productId.empty()) {
 		requestPath += "&product_id=" + productId;
 	}
 	
-	CRYPTO::AuthHeader header = GetAuthHeader(requestPath, "GET");
+	CRYPTO::AuthHeader header = GetAuthHeader(requestPathForAuth, "GET");
 
 	return DoWebRequest(m_settings.m_orders_http+requestPath, Poco::Net::HTTPRequest::HTTP_GET, [&](std::string &path)
 	{

@@ -10,7 +10,7 @@
             step_percent="0.010"
             percent_order_qty="0.0003"
             max_position="0.0038"
-            create_position="true"
+            create_position="false"
         />
         <GridConfig name="ETHUSDC_Grid"
             instrument="ETH/USDC"
@@ -20,7 +20,7 @@
             step_percent="0.0128"
             percent_order_qty="0.0075"
             max_position="0.07"
-            create_position="true"
+            create_position="false"
         />
         <GridConfig name="ETHBTC_Grid"
             instrument="ETH/BTC"
@@ -30,7 +30,7 @@
             step_percent="0.0064"
             percent_order_qty="0.008"
             max_position="0.09"
-            create_position="true"
+            create_position="false"
         />
     </GridBots>
 
@@ -44,7 +44,7 @@
                      port="443"
                      channels="level2"
                      schema="Coinbase:MD"
-                     instruments="BTC/USDC,ETH/USDC"
+                     instruments="BTC/USDC,ETH/USDC,ETH/BTC"
         />
 
         <Session name="COINBASEORD"

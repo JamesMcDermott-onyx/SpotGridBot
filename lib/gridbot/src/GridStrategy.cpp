@@ -37,9 +37,10 @@ namespace STRATEGY {
         m_activeOrders.push_back(orderId);
         m_orderDetails[orderId] = {order.side, order.price, order.quantity};
         
+        std::string sideStr = order.side == UTILS::Side::BUY ? "BUY" : "SELL";
         poco_information_f4(m_logger, "Loaded order %s: %s @ %f qty=%f", 
-                           orderId.c_str(),
-                           order.side == UTILS::Side::BUY ? "BUY" : "SELL",
+                           orderId,
+                           sideStr,
                            order.price,
                            order.quantity);
       }
