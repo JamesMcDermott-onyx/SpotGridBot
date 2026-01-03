@@ -1,11 +1,25 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include "Utils/ErrorHandler.h"
 #include "Utils/Logging.h"
 #include "Utils/Utils.h"
 
 // ---------- Grid Strategy ----------
+
+// Single grid configuration
+struct GridConfigData {
+    std::string name;
+    std::string instrument;
+    double basePrice;
+    int levelsBelow;
+    int levelsAbove;
+    double stepPercent;
+    double percentOrderQty;
+    double maxPosition;
+};
+
 class GridConfig : public UTILS::Logging, public UTILS::ErrorHandler {
 public:
     GridConfig(const std::string &path) : Logging("GridConfig") {
@@ -15,11 +29,9 @@ public:
     bool LoadConfig(const std::string &path);
     bool LoadConfig(const UTILS::XmlDocPtr &pDoc);
 
-    std::string m_instrument;
-    double m_basePrice;
-    int m_levelsBelow;
-    int m_levelsAbove;
-    double m_stepPercent;
-    double m_percentOrderQty;
-    double m_maxPosition;
+    // Access to all grid configurations
+    const std::vector<GridConfigData>& GetGridConfigs() const { return m_gridConfigs; }
+
+private:
+    std::vector<GridConfigData> m_gridConfigs;
 };

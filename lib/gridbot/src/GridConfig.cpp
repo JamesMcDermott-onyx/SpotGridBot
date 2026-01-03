@@ -1,9 +1,12 @@
 #include <Poco/Logger.h>
+#include <Poco/DOM/NodeList.h>
 #include "Utils/XmlConfigReader.h"
 #include "GridConfig.h"
 
+const std::string TAG_GRID_BOTS = "GridBots";
 const std::string TAG_GRID_CONFIG = "GridConfig";
 
+const std::string ATTR_NAME = "name";
 const std::string ATTR_INSTRUMENT = "instrument";
 const std::string ATTR_BASE_PRICE = "base_price";
 const std::string ATTR_LEVELS_BELOW = "levels_below";
@@ -28,12 +31,69 @@ bool GridConfig::LoadConfig(const UTILS::XmlDocPtr &pDoc)
 	 try
 	 {
 	 	std::string errMsg;
+	 	m_gridConfigs.clear();
 
-	 	if (auto *baseNode = UTILS::GetConfigNode(pDoc, TAG_GRID_CONFIG, &errMsg))
+	 	// Try to find GridBots container first (new format)
+	 	if (auto *gridBotsNode = UTILS::GetConfigNode(pDoc, TAG_GRID_BOTS, &errMsg))
 	 	{
-	 		poco_information_f1(logger(), "Reading %s attributes from XML", TAG_GRID_CONFIG);
-
-	 		m_instrument = UTILS::GetXmlAttribute(baseNode, ATTR_INSTRUMENT, "");
+	 		poco_information(logger(), "Reading GridBots container with multiple GridConfig entries");
+	 		
+	 		// Iterate through all GridConfig child nodes using Poco DOM API
+	 		if (gridBotsNode->hasChildNodes())
+	 		{
+	 			Poco::XML::NodeList *children = gridBotsNode->childNodes();
+	 			if (children)
+	 			{
+	 				for (unsigned long i = 0; i < children->length(); ++i)
+	 				{
+	 					Poco::XML::Node *gridNode = children->item(i);
+	 					if (gridNode->nodeType() == Poco::XML::Node::ELEMENT_NODE && 
+	 					    gridNode->localName() == TAG_GRID_CONFIG)
+	 					{
+	 						GridConfigData cfg;
+	 						
+	 						cfg.name = UTILS::GetXmlAttribute(gridNode, ATTR_NAME, "");
+	 						cfg.instrument = UTILS::GetXmlAttribute(gridNode, ATTR_INSTRUMENT, "");
+	 						
+	 						std::string basePriceStr = UTILS::GetXmlAttribute(gridNode, ATTR_BASE_PRICE, "0.0");
+	 						std::string levelsBelowStr = UTILS::GetXmlAttribute(gridNode, ATTR_LEVELS_BELOW, "0");
+	 						std::string levelsAboveStr = UTILS::GetXmlAttribute(gridNode, ATTR_LEVELS_ABOVE, "0");
+	 						std::string stepPercentStr = UTILS::GetXmlAttribute(gridNode, ATTR_STEP_PERCENT, "0.0");
+	 						std::string percentOrderQtyStr = UTILS::GetXmlAttribute(gridNode, ATTR_PERCENT_ORDER_QTY, "0.0");
+	 						std::string maxPositionStr = UTILS::GetXmlAttribute(gridNode, ATTR_MAX_POSITION, "0.0");
+	 						
+	 						cfg.basePrice = std::stod(basePriceStr);
+	 						cfg.levelsBelow = std::stoi(levelsBelowStr);
+	 						cfg.levelsAbove = std::stoi(levelsAboveStr);
+	 						cfg.stepPercent = std::stod(stepPercentStr);
+	 						cfg.percentOrderQty = std::stod(percentOrderQtyStr);
+	 						cfg.maxPosition = std::stod(maxPositionStr);
+	 						
+	 						m_gridConfigs.push_back(cfg);
+	 						
+	 						std::string configSummary = "Loaded grid '" + cfg.name + "' for " + cfg.instrument + 
+	 						                           ": base=" + std::to_string(cfg.basePrice) + 
+	 						                           ", levels=" + std::to_string(cfg.levelsBelow) + "/" + std::to_string(cfg.levelsAbove) + 
+	 						                           ", step=" + std::to_string(cfg.stepPercent) + 
+	 						                           ", qty=" + std::to_string(cfg.percentOrderQty) + 
+	 						                           ", max=" + std::to_string(cfg.maxPosition);
+	 						poco_information(logger(), configSummary);
+	 					}
+	 				}
+	 				children->release();
+	 			}
+	 		}
+	 		
+	 		poco_information_f1(logger(), "Loaded %s grid configurations", std::to_string(m_gridConfigs.size()));
+	 	}
+	 	// Fallback: Try single GridConfig node (old format for backwards compatibility)
+	 	else if (auto *baseNode = UTILS::GetConfigNode(pDoc, TAG_GRID_CONFIG, &errMsg))
+	 	{
+	 		poco_information(logger(), "Reading single GridConfig (legacy format)");
+	 		
+	 		GridConfigData cfg;
+	 		cfg.name = "grid1";
+	 		cfg.instrument = UTILS::GetXmlAttribute(baseNode, ATTR_INSTRUMENT, "");
 	 		
 	 		std::string basePriceStr = UTILS::GetXmlAttribute(baseNode, ATTR_BASE_PRICE, "0.0");
 	 		std::string levelsBelowStr = UTILS::GetXmlAttribute(baseNode, ATTR_LEVELS_BELOW, "0");
@@ -42,26 +102,26 @@ bool GridConfig::LoadConfig(const UTILS::XmlDocPtr &pDoc)
 	 		std::string percentOrderQtyStr = UTILS::GetXmlAttribute(baseNode, ATTR_PERCENT_ORDER_QTY, "0.0");
 	 		std::string maxPositionStr = UTILS::GetXmlAttribute(baseNode, ATTR_MAX_POSITION, "0.0");
 	 		
-	 		poco_information_f1(logger(), "instrument: %s", m_instrument);
-	 		poco_information_f1(logger(), "base_price string: %s", basePriceStr);
+	 		cfg.basePrice = std::stod(basePriceStr);
+	 		cfg.levelsBelow = std::stoi(levelsBelowStr);
+	 		cfg.levelsAbove = std::stoi(levelsAboveStr);
+	 		cfg.stepPercent = std::stod(stepPercentStr);
+	 		cfg.percentOrderQty = std::stod(percentOrderQtyStr);
+	 		cfg.maxPosition = std::stod(maxPositionStr);
 	 		
-	 		m_basePrice = std::stod(basePriceStr);
-	 		m_levelsBelow = std::stoi(levelsBelowStr);
-	 		m_levelsAbove = std::stoi(levelsAboveStr);
-	 		m_stepPercent = std::stod(stepPercentStr);
-	 		m_percentOrderQty = std::stod(percentOrderQtyStr);
-	 		m_maxPosition = std::stod(maxPositionStr);
+	 		m_gridConfigs.push_back(cfg);
 	 		
-	 		std::string configSummary = "Loaded config: base=" + std::to_string(m_basePrice) + 
-	 		                           ", levels=" + std::to_string(m_levelsBelow) + "/" + std::to_string(m_levelsAbove) + 
-	 		                           ", step=" + std::to_string(m_stepPercent) + 
-	 		                           ", qty=" + std::to_string(m_percentOrderQty) + 
-	 		                           ", max=" + std::to_string(m_maxPosition);
+	 		std::string configSummary = "Loaded config for " + cfg.instrument + 
+	 		                           ": base=" + std::to_string(cfg.basePrice) + 
+	 		                           ", levels=" + std::to_string(cfg.levelsBelow) + "/" + std::to_string(cfg.levelsAbove) + 
+	 		                           ", step=" + std::to_string(cfg.stepPercent) + 
+	 		                           ", qty=" + std::to_string(cfg.percentOrderQty) + 
+	 		                           ", max=" + std::to_string(cfg.maxPosition);
 	 		poco_information(logger(), configSummary);
 	 	}
 	 	else
 	 	{
-	 		poco_error(logger(), "Error loading config: Invalid base node");
+	 		poco_error(logger(), "Error loading config: No GridBots or GridConfig node found");
 	 		return false;
 	 	}
 	 }

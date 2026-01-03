@@ -1,15 +1,26 @@
 <Configuration>
 
 <!-- base_price=0 means use current market price as base price -->
-    <GridConfig
-        instrument="BTC/USDC"
-        base_price="0" 
-        levels_above="5"
-        levels_below="6"
-        step_percent="0.010"
-        percent_order_qty="0.0003"
-        max_position="0.0038"
-    />
+    <GridBots>
+        <GridConfig name="BTC_Grid"
+            instrument="BTC/USDC"
+            base_price="0" 
+            levels_above="5"
+            levels_below="6"
+            step_percent="0.010"
+            percent_order_qty="0.0003"
+            max_position="0.0038"
+        />
+        <GridConfig name="ETH_Grid"
+            instrument="ETH/USDC"
+            base_price="0" 
+            levels_above="5"
+            levels_below="6"
+            step_percent="0.010"
+            percent_order_qty="0.005"
+            max_position="0.05"
+        />
+    </GridBots>
 
     <SessionConfig>
         <Session name="COINBASEMD"
@@ -21,7 +32,7 @@
                      port="443"
                      channels="level2"
                      schema="Coinbase:MD"
-                     instruments="BTC/USDC"
+                     instruments="BTC/USDC,ETH/USDC"
         />
 
         <Session name="COINBASEORD"

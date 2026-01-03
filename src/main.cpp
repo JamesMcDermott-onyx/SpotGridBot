@@ -53,8 +53,10 @@ int main(int argc, char** argv)
         m_orderManager->InitializeBalances();
         m_orderManager->PrintAllBalances();
 
-        // Load existing open orders from exchange
+        // Load existing open orders from exchange for all configured instruments
+        // Note: LoadOpenOrders will be called for each instrument in the grid
         m_orderManager->LoadOpenOrders(UTILS::CurrencyPair("BTC/USDC"));
+        // Add more instruments as needed, or make this dynamic based on grid configs
         
         // Load existing orders into strategy before starting
         strat.LoadExistingOrders();
