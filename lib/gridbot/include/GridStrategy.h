@@ -47,6 +47,9 @@ namespace STRATEGY {
     void LoadExistingOrders();
     void CheckFilledOrders();
     void PrintStatus();
+    
+    // Get list of all instruments being traded
+    std::vector<std::string> GetInstruments() const;
 
   private:
     std::shared_ptr<CORE::IOrderManager> m_orderManager;

@@ -372,4 +372,14 @@ namespace STRATEGY {
       bot->PrintStatus();
     }
   }
+  
+  std::vector<std::string> GridStrategy::GetInstruments() const
+  {
+    std::vector<std::string> instruments;
+    for (const auto& bot : m_gridBots)
+    {
+      instruments.push_back(bot->GetInstrument());
+    }
+    return instruments;
+  }
 }
